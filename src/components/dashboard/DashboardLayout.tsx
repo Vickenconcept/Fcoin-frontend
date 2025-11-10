@@ -25,6 +25,7 @@ import { WalletSection } from './sections/WalletSection';
 import { ProfileSection } from './sections/ProfileSection';
 import { LaunchCoinModal } from './LaunchCoinModal';
 import { useRewardRules } from './hooks/useRewardRules';
+import { useCoins } from './hooks/useCoins';
 
 type TabType = 'home' | 'discover' | 'my-coin' | 'wallet' | 'profile';
 
@@ -43,6 +44,7 @@ export default function DashboardLayout() {
   const {
     walletBalance,
     walletCurrency,
+    conversionRate,
     earnedCoinsTotal,
     followerCount,
     followingCount,
@@ -55,6 +57,11 @@ export default function DashboardLayout() {
     isSaving: isRewardRulesSaving,
     save: saveRewardRules,
   } = useRewardRules();
+  const {
+    coins,
+    isLoading: isCoinsLoading,
+    reload: reloadCoins,
+  } = useCoins();
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
 
@@ -66,15 +73,16 @@ export default function DashboardLayout() {
     return numberFormatter.format(value);
   };
 
-  const poolBalanceValue = walletBalance;
-  const poolBalanceDisplay = isStatsLoading && walletBalance === 0 ? '…' : formatNumber(walletBalance);
-
+  const primaryCoinSymbol = (user?.default_coin_symbol ?? walletCurrency ?? 'FCN').toUpperCase();
+  const primaryCoinBalance =
+    coins.find((coin) => coin.symbol === primaryCoinSymbol)?.balance ?? walletBalance;
+  const poolBalanceValue = primaryCoinBalance;
+  const poolBalanceDisplay =
+    isStatsLoading && primaryCoinBalance === 0 ? '…' : formatNumber(primaryCoinBalance);
   const followerCountValue = followerCount ?? 0;
   const followingCountValue = followingCount ?? 0;
 
-  const hasLaunchedCoin = Boolean(user?.default_coin_symbol && user.default_coin_symbol !== 'FCN' && user.default_coin_symbol !== null);
-  const myCoinSupply = walletBalance > 0 ? walletBalance : 0;
-  const myCoinName = user?.default_coin_symbol ?? walletCurrency;
+  const myCoinName = primaryCoinSymbol;
 
   const followerCountDisplay =
     isStatsLoading && followerCount === null ? '…' : formatNumber(followerCountValue);
@@ -85,8 +93,6 @@ export default function DashboardLayout() {
   const earnedCoinsValue = earnedCoinsTotal > 0 ? earnedCoinsTotal : walletBalance;
   const earnedCoinsDisplay =
     isStatsLoading && earnedCoinsTotal === 0 ? '…' : formatNumber(earnedCoinsValue);
-
-  const poolProgressValue = myCoinSupply > 0 ? Math.min((poolBalanceValue / myCoinSupply) * 100, 100) : 0;
 
   const activeTab: TabType = allowedTabs.includes((section ?? 'home') as TabType)
     ? ((section ?? 'home') as TabType)
@@ -311,20 +317,21 @@ export default function DashboardLayout() {
 
           {activeTab === 'my-coin' && (
             <MyCoinSection
-              hasLaunchedCoin={hasLaunchedCoin}
-              myCoinName={myCoinName}
-              myCoinSupply={myCoinSupply}
+              coins={coins}
+              coinsLoading={isCoinsLoading}
+              primaryCoinSymbol={myCoinName}
+              primaryCoinBalance={poolBalanceValue}
               followerCountDisplay={followerCountDisplay}
-              poolBalanceDisplay={poolBalanceDisplay}
-              poolProgressValue={poolProgressValue}
-              walletCurrency={walletCurrency}
-              poolBalanceValue={poolBalanceValue}
               onOpenLaunchModal={() => setLaunchCoinModalOpen(true)}
               onOpenAllocateModal={() => setAllocateModalOpen(true)}
               rewardRules={rewardRules}
               onSaveRewardRules={saveRewardRules}
               isRewardRulesLoading={isRewardRulesLoading}
               isRewardRulesSaving={isRewardRulesSaving}
+              conversionRate={conversionRate}
+              onAfterTopUp={async () => {
+                await Promise.all([refreshStats(), reloadCoins()]);
+              }}
             />
           )}
 
@@ -345,6 +352,7 @@ export default function DashboardLayout() {
           // Refresh user data and stats
           await refreshUser();
           await refreshStats();
+          await reloadCoins();
         }}
       />
 

@@ -1,22 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
-import { Gift, Sparkles, Wallet, Plus } from 'lucide-react';
+import { Gift, Sparkles, Wallet } from 'lucide-react';
 import { apiClient } from '../../../lib/apiClient';
-import { TopUpModal } from '../TopUpModal';
 
 type WalletSectionProps = {
   earnedCoinsDisplay: string;
 };
 
 export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
+  const navigate = useNavigate();
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [walletCurrency, setWalletCurrency] = useState<string>('FCN');
   const [conversionRate, setConversionRate] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [topUpModalOpen, setTopUpModalOpen] = useState(false);
+  const [coinBalances, setCoinBalances] = useState<Array<{ coin_symbol: string; balance: number }>>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
 
   const fetchWallet = useCallback(async () => {
@@ -25,8 +25,9 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
       const response = await apiClient.request<any>('/v1/wallets/me');
       if (response.ok && response.data) {
         setWalletBalance(response.data.balance || 0);
-        setWalletCurrency(response.data.currency || 'FCN');
+        setWalletCurrency(response.data.primary_coin || response.data.currency || 'FCN');
         setConversionRate(response.data.conversion_rate || 1);
+        setCoinBalances(response.data.coin_balances || []);
         setTransactions(response.data.transactions || []);
       }
     } catch (error) {
@@ -40,42 +41,7 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
     fetchWallet();
   }, [fetchWallet]);
 
-  // Handle payment redirects (success/cancel from Stripe)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const paymentStatus = params.get('payment');
-    
-    if (paymentStatus === 'success') {
-      toast.success('Payment successful! Your wallet has been credited.');
-      // Refresh wallet data
-      fetchWallet();
-      // Clean URL
-      window.history.replaceState({}, '', window.location.pathname);
-    } else if (paymentStatus === 'cancel') {
-      toast.error('Payment was cancelled.');
-      // Clean URL
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, [fetchWallet]);
-
-  // Group transactions by currency (creator's coin symbol)
-  const transactionsByCurrency = transactions.reduce((acc, tx) => {
-    const currency = tx.currency || 'FCN';
-    if (!acc[currency]) {
-      acc[currency] = [];
-    }
-    acc[currency].push(tx);
-    return acc;
-  }, {} as Record<string, any[]>);
-
-  // Calculate total per currency
-  const currencyTotals = Object.entries(transactionsByCurrency).map((entry) => {
-    const [currency, txs] = entry as [string, any[]];
-    const total = txs
-      .filter((tx: any) => tx.type === 'CREDIT' || tx.type === 'TOPUP')
-      .reduce((sum: number, tx: any) => sum + (parseFloat(tx.amount) || 0), 0);
-    return { currency, total, transactions: txs };
-  });
+  const sortedCoinBalances = [...coinBalances].sort((a, b) => a.coin_symbol.localeCompare(b.coin_symbol));
 
   return (
     <div className="space-y-6">
@@ -90,10 +56,9 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
         </div>
         <Button
           className="mt-4 bg-white text-purple-600 hover:bg-purple-50"
-          onClick={() => setTopUpModalOpen(true)}
+          onClick={() => navigate('/dashboard/my-coin')}
         >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Coins
+          Manage Coins
         </Button>
       </Card>
 
@@ -108,27 +73,27 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
             <Card className="p-6 border-purple-100">
               <p className="text-slate-600">Loading wallet data...</p>
             </Card>
-          ) : currencyTotals.length === 0 ? (
+          ) : sortedCoinBalances.length === 0 ? (
             <Card className="p-6 border-purple-100 text-center">
               <p className="text-slate-900 font-medium mb-2">No coins yet</p>
               <p className="text-slate-600">Start following creators and engaging with their content to earn coins!</p>
             </Card>
           ) : (
-            currencyTotals.map(({ currency, total }) => (
-              <Card key={currency} className="p-6 border-purple-100">
+            sortedCoinBalances.map(({ coin_symbol, balance }) => (
+              <Card key={coin_symbol} className="p-6 border-purple-100">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center">
-                      <span className="text-2xl font-bold text-white">{currency.charAt(0)}</span>
+                      <span className="text-2xl font-bold text-white">{coin_symbol.charAt(0)}</span>
                     </div>
                     <div>
-                      <p className="text-slate-900 font-medium">{currency} Coins</p>
-                      <p className="text-slate-500">From {currency} creator</p>
+                      <p className="text-slate-900 font-medium">{coin_symbol} Coins</p>
+                      <p className="text-slate-500">Balance held in your wallet</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-purple-600">
                     <Sparkles className="w-6 h-6" />
-                    <span className="text-2xl font-bold">{total.toLocaleString()}</span>
+                    <span className="text-2xl font-bold">{balance.toLocaleString()}</span>
                   </div>
                 </div>
                 <Button variant="outline" className="w-full">
@@ -152,18 +117,6 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Top Up Modal */}
-      <TopUpModal
-        open={topUpModalOpen}
-        onOpenChange={setTopUpModalOpen}
-        onSuccess={() => {
-          setTopUpModalOpen(false);
-          fetchWallet();
-        }}
-        conversionRate={conversionRate}
-        walletCurrency={walletCurrency}
-      />
     </div>
   );
 }

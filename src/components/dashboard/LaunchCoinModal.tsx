@@ -44,6 +44,7 @@ export function LaunchCoinModal({ open, onOpenChange, onSuccess }: LaunchCoinMod
       if (response.ok) {
         toast.success('Coin created successfully!');
         await refreshUser();
+        setCoinSymbol('');
         onSuccess();
       } else {
         const errorMessage = response.errors?.[0]?.detail || 'Failed to create coin';

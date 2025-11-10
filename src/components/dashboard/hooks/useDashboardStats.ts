@@ -5,6 +5,7 @@ import { apiClient, type ApiResponse } from '@/lib/apiClient';
 export type DashboardStats = {
   walletBalance: number;
   walletCurrency: string;
+  conversionRate: number;
   earnedCoinsTotal: number;
   followerCount: number | null;
   followingCount: number | null;
@@ -46,6 +47,7 @@ const extractCount = (response: ApiResponse<any>): number | null => {
 export const useDashboardStats = (userId?: string, defaultCurrency = 'FCN'): DashboardStats => {
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [walletCurrency, setWalletCurrency] = useState<string>(defaultCurrency);
+  const [conversionRate, setConversionRate] = useState<number>(1);
   const [earnedCoinsTotal, setEarnedCoinsTotal] = useState<number>(0);
   const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [followingCount, setFollowingCount] = useState<number | null>(null);
@@ -69,6 +71,8 @@ export const useDashboardStats = (userId?: string, defaultCurrency = 'FCN'): Das
         const balanceValue = normalizeNumber(walletResponse.data.balance);
         setWalletBalance(balanceValue);
         setWalletCurrency(walletResponse.data.currency ?? defaultCurrency);
+        const conversion = normalizeNumber(walletResponse.data.conversion_rate);
+        setConversionRate(conversion > 0 ? conversion : 1);
 
         const transactions = Array.isArray(walletResponse.data.transactions)
           ? walletResponse.data.transactions
@@ -122,6 +126,7 @@ export const useDashboardStats = (userId?: string, defaultCurrency = 'FCN'): Das
   return {
     walletBalance,
     walletCurrency,
+    conversionRate,
     earnedCoinsTotal,
     followerCount,
     followingCount,

@@ -9,12 +9,12 @@ import { apiClient } from '../../lib/apiClient';
 interface TopUpModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
-  conversionRate?: number;
-  walletCurrency?: string;
+  coinSymbol: string;
+  conversionRate: number;
+  returnPath?: string;
 }
 
-export function TopUpModal({ open, onOpenChange, onSuccess, conversionRate = 1, walletCurrency = 'FCN' }: TopUpModalProps) {
+export function TopUpModal({ open, onOpenChange, coinSymbol, conversionRate, returnPath }: TopUpModalProps) {
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,7 +46,8 @@ export function TopUpModal({ open, onOpenChange, onSuccess, conversionRate = 1, 
         method: 'POST',
         body: {
           amount: amountValue,
-          return_url: `${window.location.origin}/dashboard/wallet`,
+          coin_symbol: coinSymbol,
+          return_url: returnPath ?? `${window.location.origin}${window.location.pathname}`,
         } as any,
       });
 
@@ -71,7 +72,7 @@ export function TopUpModal({ open, onOpenChange, onSuccess, conversionRate = 1, 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Coins to Wallet</DialogTitle>
+          <DialogTitle>Fund {coinSymbol} Pool</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div>
@@ -97,12 +98,12 @@ export function TopUpModal({ open, onOpenChange, onSuccess, conversionRate = 1, 
               <div className="flex justify-between">
                 <span className="text-slate-600">You will receive:</span>
                 <span className="text-purple-600 font-medium">
-                  {coinAmount} {walletCurrency}
+                  {coinAmount} {coinSymbol}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Conversion rate:</span>
-                <span className="text-slate-500">1 USD = {conversionRate} {walletCurrency}</span>
+                <span className="text-slate-500">1 USD = {conversionRate} {coinSymbol}</span>
               </div>
             </div>
           </Card>
