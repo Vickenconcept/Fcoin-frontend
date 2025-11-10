@@ -1,8 +1,10 @@
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { AlertCircle, Coins, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import type { RewardRules } from '../hooks/useRewardRules';
 
 const demoMyFollowers = [
   { id: 1, name: 'Alex Rivera', username: '@alexr', avatar: '👤', earned: 145, lastActive: '2h ago' },
@@ -22,6 +24,10 @@ type MyCoinSectionProps = {
   poolBalanceValue: number;
   onOpenLaunchModal: () => void;
   onOpenAllocateModal: () => void;
+  rewardRules: RewardRules;
+  onSaveRewardRules: (rules: RewardRules) => Promise<void>;
+  isRewardRulesLoading: boolean;
+  isRewardRulesSaving: boolean;
 };
 
 export function MyCoinSection({
@@ -35,7 +41,53 @@ export function MyCoinSection({
   poolBalanceValue,
   onOpenLaunchModal,
   onOpenAllocateModal,
+  rewardRules,
+  onSaveRewardRules,
+  isRewardRulesLoading,
+  isRewardRulesSaving,
 }: MyCoinSectionProps) {
+  const [localRules, setLocalRules] = useState<RewardRules>(rewardRules);
+
+  useEffect(() => {
+    setLocalRules(rewardRules);
+  }, [rewardRules]);
+
+  const handleBaseAmountChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = Number(event.target.value);
+    setLocalRules((prev) => ({
+      ...prev,
+      base_amount: Number.isNaN(value) ? 0 : Math.max(0, value),
+    }));
+  };
+
+  const handlePerTypeChange = (type: string) => (event: ChangeEvent<HTMLInputElement>) => {
+    const value = Number(event.target.value);
+    setLocalRules((prev) => ({
+      ...prev,
+      per_type: {
+        ...prev.per_type,
+        [type]: Number.isNaN(value) ? 0 : Math.max(0, value),
+      },
+    }));
+  };
+
+  const handleSaveRewardRules = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSaveRewardRules(localRules).catch((error) => {
+      console.error('[MyCoinSection] Failed to save reward rules', error);
+    });
+  };
+
+  const rewardRuleFields = useMemo(
+    () => [
+      { key: 'like', label: 'Per Like' },
+      { key: 'comment', label: 'Per Comment' },
+      { key: 'share', label: 'Per Share' },
+      { key: 'watch', label: 'Per Full Watch' },
+    ],
+    [],
+  );
+
   return (
     <div className="space-y-6">
       {!hasLaunchedCoin ? (
@@ -147,28 +199,50 @@ export function MyCoinSection({
 
           {/* Distribution Settings */}
           <Card className="p-6 border-purple-100">
-            <h3 className="text-slate-900 mb-6">Reward Distribution Settings</h3>
-            <div className="grid md:grid-cols-2 gap-6">
+            <form className="space-y-6" onSubmit={handleSaveRewardRules}>
               <div>
-                <p className="text-slate-600 mb-2">Per Like</p>
-                <Input type="number" defaultValue="5" />
+                <h3 className="text-slate-900 mb-2">Reward Distribution Settings</h3>
+                <p className="text-slate-500 text-sm">
+                  Decide how many {walletCurrency} you want to send for each verified engagement.
+                </p>
               </div>
+
               <div>
-                <p className="text-slate-600 mb-2">Per Comment</p>
-                <Input type="number" defaultValue="15" />
+                <p className="text-slate-600 mb-2">Base Reward (fallback)</p>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={localRules.base_amount}
+                  onChange={handleBaseAmountChange}
+                  disabled={isRewardRulesLoading || isRewardRulesSaving}
+                />
               </div>
-              <div>
-                <p className="text-slate-600 mb-2">Per Share</p>
-                <Input type="number" defaultValue="25" />
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {rewardRuleFields.map(({ key, label }) => (
+                  <div key={key}>
+                    <p className="text-slate-600 mb-2">{label}</p>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={localRules.per_type[key] ?? 0}
+                      onChange={handlePerTypeChange(key)}
+                      disabled={isRewardRulesLoading || isRewardRulesSaving}
+                    />
+                  </div>
+                ))}
               </div>
-              <div>
-                <p className="text-slate-600 mb-2">Per Full Watch</p>
-                <Input type="number" defaultValue="10" />
-              </div>
-            </div>
-            <Button className="w-full mt-6 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-              Save Settings
-            </Button>
+
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                disabled={isRewardRulesLoading || isRewardRulesSaving}
+              >
+                {isRewardRulesSaving ? 'Saving...' : 'Save Settings'}
+              </Button>
+            </form>
           </Card>
 
           <Card className="p-6 border-purple-100">

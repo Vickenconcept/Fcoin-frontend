@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -12,24 +12,26 @@ import {
   Wallet as WalletIcon,
   X,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useAuth } from '@/context/AuthContext';
+import { Button } from '../ui/button';
+import { Card } from '../ui/card';
+import { Input } from '../ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { useAuth } from '../../context/AuthContext';
 import { useDashboardStats } from './hooks/useDashboardStats';
 import { HomeSection } from './sections/HomeSection';
 import { DiscoverSection } from './sections/DiscoverSection';
 import { MyCoinSection } from './sections/MyCoinSection';
 import { WalletSection } from './sections/WalletSection';
 import { ProfileSection } from './sections/ProfileSection';
+import { LaunchCoinModal } from './LaunchCoinModal';
+import { useRewardRules } from './hooks/useRewardRules';
 
 type TabType = 'home' | 'discover' | 'my-coin' | 'wallet' | 'profile';
 
 const allowedTabs: TabType[] = ['home', 'discover', 'my-coin', 'wallet', 'profile'];
 
 export default function DashboardLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { section } = useParams<{ section?: string }>();
@@ -45,7 +47,14 @@ export default function DashboardLayout() {
     followerCount,
     followingCount,
     isLoading: isStatsLoading,
+    refresh: refreshStats,
   } = useDashboardStats(user?.id, user?.default_coin_symbol ?? 'FCN');
+  const {
+    rules: rewardRules,
+    isLoading: isRewardRulesLoading,
+    isSaving: isRewardRulesSaving,
+    save: saveRewardRules,
+  } = useRewardRules();
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
 
@@ -63,8 +72,8 @@ export default function DashboardLayout() {
   const followerCountValue = followerCount ?? 0;
   const followingCountValue = followingCount ?? 0;
 
-  const hasLaunchedCoin = true;
-  const myCoinSupply = 10000;
+  const hasLaunchedCoin = Boolean(user?.default_coin_symbol && user.default_coin_symbol !== 'FCN' && user.default_coin_symbol !== null);
+  const myCoinSupply = walletBalance > 0 ? walletBalance : 0;
   const myCoinName = user?.default_coin_symbol ?? walletCurrency;
 
   const followerCountDisplay =
@@ -312,6 +321,10 @@ export default function DashboardLayout() {
               poolBalanceValue={poolBalanceValue}
               onOpenLaunchModal={() => setLaunchCoinModalOpen(true)}
               onOpenAllocateModal={() => setAllocateModalOpen(true)}
+              rewardRules={rewardRules}
+              onSaveRewardRules={saveRewardRules}
+              isRewardRulesLoading={isRewardRulesLoading}
+              isRewardRulesSaving={isRewardRulesSaving}
             />
           )}
 
@@ -324,30 +337,16 @@ export default function DashboardLayout() {
       </div>
 
       {/* Launch Coin Modal */}
-      <Dialog open={launchCoinModalOpen} onOpenChange={setLaunchCoinModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Launch Your Coin</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <p className="text-slate-600 mb-2">Coin Name</p>
-              <Input placeholder="e.g., SarahCoins, DavidTokens..." />
-            </div>
-            <div>
-              <p className="text-slate-600 mb-2">Initial Supply</p>
-              <Input type="number" placeholder="10000" />
-            </div>
-            <Card className="p-4 bg-purple-50 border-purple-100">
-              <p className="text-slate-600 mb-2">Launch Fee</p>
-              <p className="text-slate-900">$50 (one-time)</p>
-            </Card>
-            <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-              Launch My Coin
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <LaunchCoinModal
+        open={launchCoinModalOpen}
+        onOpenChange={setLaunchCoinModalOpen}
+        onSuccess={async () => {
+          setLaunchCoinModalOpen(false);
+          // Refresh user data and stats
+          await refreshUser();
+          await refreshStats();
+        }}
+      />
 
       {/* Allocate Rewards Modal */}
       <Dialog open={allocateModalOpen} onOpenChange={setAllocateModalOpen}>

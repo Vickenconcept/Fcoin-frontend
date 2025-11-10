@@ -9,6 +9,7 @@ export type DashboardStats = {
   followerCount: number | null;
   followingCount: number | null;
   isLoading: boolean;
+  refresh: () => Promise<void>;
 };
 
 const normalizeNumber = (value: unknown): number => {
@@ -125,6 +126,7 @@ export const useDashboardStats = (userId?: string, defaultCurrency = 'FCN'): Das
     followerCount,
     followingCount,
     isLoading,
+    refresh: fetchStats,
   };
 };
 
