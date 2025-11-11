@@ -41,7 +41,15 @@ const SOCIAL_PROVIDERS = [
 
 export function ProfileSection() {
   const { user } = useAuth();
-  const { accountsMap, isLoading, isConnecting, connectFacebook, connectInstagram, disconnect } =
+  const {
+    accountsMap,
+    isLoading,
+    isConnecting,
+    connectFacebookProfile,
+    connectFacebookPages,
+    connectInstagram,
+    disconnect,
+  } =
     useSocialAccounts();
   const [isFacebookManagerOpen, setIsFacebookManagerOpen] = useState(false);
 
@@ -112,13 +120,23 @@ export function ProfileSection() {
                     <div className="flex items-center gap-3">
                       <Badge className="bg-green-100 text-green-700 border-green-200">Connected</Badge>
                       {provider.provider === 'facebook' && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => setIsFacebookManagerOpen(true)}
-                        >
-                          Manage Pages
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setIsFacebookManagerOpen(true)}
+                          >
+                            Manage Pages
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isConnecting}
+                            onClick={() => connectFacebookPages().catch(() => {})}
+                          >
+                            {isConnecting ? 'Reconnecting…' : 'Grant Page Access'}
+                          </Button>
+                        </div>
                       )}
                       <Button
                         variant="outline"
@@ -129,14 +147,30 @@ export function ProfileSection() {
                       </Button>
                     </div>
                   ) : provider.provider === 'facebook' ? (
-                    <Button
-                      size="sm"
-                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                      disabled={isLoading || isConnecting}
-                      onClick={() => connectFacebook().catch(() => {})}
-                    >
-                      {isConnecting ? 'Connecting…' : provider.connectLabel}
-                    </Button>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button
+                          size="sm"
+                          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                          disabled={isLoading || isConnecting}
+                          onClick={() => connectFacebookProfile().catch(() => {})}
+                        >
+                          {isConnecting ? 'Connecting…' : 'Connect Profile'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={isLoading || isConnecting}
+                          onClick={() => connectFacebookPages().catch(() => {})}
+                        >
+                          {isConnecting ? 'Connecting…' : 'Connect with Pages'}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Profile connects let us recognise your engagement. Grant Page access when you’re ready to
+                        track posts and reward fans.
+                      </p>
+                    </div>
                   ) : provider.provider === 'instagram' ? (
                     <Button
                       size="sm"

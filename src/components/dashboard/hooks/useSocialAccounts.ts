@@ -15,6 +15,10 @@ const API_ORIGIN = new URL(API_BASE_URL).origin;
 
 type ConnectableProvider = 'facebook' | 'instagram';
 
+type ConnectOptions = {
+  mode?: 'profile' | 'pages';
+};
+
 const providerLabels: Record<ConnectableProvider, string> = {
   facebook: 'Facebook',
   instagram: 'Instagram',
@@ -49,7 +53,7 @@ export function useSocialAccounts() {
   }, [load]);
 
   const connect = useCallback(
-    async (provider: ConnectableProvider) => {
+    async (provider: ConnectableProvider, options: ConnectOptions = {}) => {
       if (isConnecting) {
         return;
       }
@@ -58,8 +62,14 @@ export function useSocialAccounts() {
 
       try {
         const origin = window.location.origin;
+        const params = new URLSearchParams({ origin });
+
+        if (options.mode) {
+          params.append('mode', options.mode);
+        }
+
         const response = await apiClient.request<{ url: string }>(
-          `/v1/oauth/${provider}/login-url?origin=${encodeURIComponent(origin)}`,
+          `/v1/oauth/${provider}/login-url?${params.toString()}`,
         );
 
         if (!response.ok || !response.data?.url) {
@@ -150,7 +160,8 @@ export function useSocialAccounts() {
     accountsMap,
     isLoading,
     isConnecting,
-    connectFacebook: () => connect('facebook'),
+    connectFacebookProfile: () => connect('facebook', { mode: 'profile' }),
+    connectFacebookPages: () => connect('facebook', { mode: 'pages' }),
     connectInstagram: () => connect('instagram'),
     disconnect,
     reload: load,
