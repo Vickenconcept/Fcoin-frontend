@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Facebook, Instagram, Youtube } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSocialAccounts } from '../hooks/useSocialAccounts';
+import { FacebookPagesManager } from './FacebookPagesManager';
 
 const SOCIAL_PROVIDERS = [
   {
@@ -20,7 +21,7 @@ const SOCIAL_PROVIDERS = [
     platform: 'Instagram',
     icon: Instagram,
     color: 'bg-pink-100 text-pink-600',
-    connectLabel: 'Coming Soon',
+    connectLabel: 'Connect Instagram',
   },
   {
     provider: 'youtube',
@@ -40,7 +41,9 @@ const SOCIAL_PROVIDERS = [
 
 export function ProfileSection() {
   const { user } = useAuth();
-  const { accountsMap, isLoading, isConnecting, connectFacebook, disconnect } = useSocialAccounts();
+  const { accountsMap, isLoading, isConnecting, connectFacebook, connectInstagram, disconnect } =
+    useSocialAccounts();
+  const [isFacebookManagerOpen, setIsFacebookManagerOpen] = useState(false);
 
   const providers = useMemo(() => SOCIAL_PROVIDERS, []);
 
@@ -108,6 +111,15 @@ export function ProfileSection() {
                   {isConnected ? (
                     <div className="flex items-center gap-3">
                       <Badge className="bg-green-100 text-green-700 border-green-200">Connected</Badge>
+                      {provider.provider === 'facebook' && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setIsFacebookManagerOpen(true)}
+                        >
+                          Manage Pages
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -125,6 +137,15 @@ export function ProfileSection() {
                     >
                       {isConnecting ? 'Connecting…' : provider.connectLabel}
                     </Button>
+                  ) : provider.provider === 'instagram' ? (
+                    <Button
+                      size="sm"
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      disabled={isLoading || isConnecting}
+                      onClick={() => connectInstagram().catch(() => {})}
+                    >
+                      {isConnecting ? 'Connecting…' : provider.connectLabel}
+                    </Button>
                   ) : (
                     <Badge className="bg-slate-200 text-slate-500 border-slate-300">Coming Soon</Badge>
                   )}
@@ -134,6 +155,10 @@ export function ProfileSection() {
           })}
         </div>
       </Card>
+      <FacebookPagesManager
+        open={isFacebookManagerOpen}
+        onOpenChange={setIsFacebookManagerOpen}
+      />
     </div>
   );
 }

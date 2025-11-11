@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
+  BarChart3,
   Coins,
   Home,
   LogOut,
@@ -23,13 +24,18 @@ import { DiscoverSection } from './sections/DiscoverSection';
 import { MyCoinSection } from './sections/MyCoinSection';
 import { WalletSection } from './sections/WalletSection';
 import { ProfileSection } from './sections/ProfileSection';
+import { SocialInsightsSection } from './sections/SocialInsightsSection';
 import { LaunchCoinModal } from './LaunchCoinModal';
 import { useRewardRules } from './hooks/useRewardRules';
 import { useCoins } from './hooks/useCoins';
+import type { CreatorCoin } from './hooks/useCoins';
+type ClickEvent = {
+  stopPropagation: () => void;
+};
 
-type TabType = 'home' | 'discover' | 'my-coin' | 'wallet' | 'profile';
+type TabType = 'home' | 'discover' | 'my-coin' | 'wallet' | 'profile' | 'social-insights';
 
-const allowedTabs: TabType[] = ['home', 'discover', 'my-coin', 'wallet', 'profile'];
+const allowedTabs: TabType[] = ['home', 'discover', 'my-coin', 'wallet', 'profile', 'social-insights'];
 
 export default function DashboardLayout() {
   const { user, logout, refreshUser } = useAuth();
@@ -75,7 +81,7 @@ export default function DashboardLayout() {
 
   const primaryCoinSymbol = (user?.default_coin_symbol ?? walletCurrency ?? 'FCN').toUpperCase();
   const primaryCoinBalance =
-    coins.find((coin) => coin.symbol === primaryCoinSymbol)?.balance ?? walletBalance;
+    coins.find((coin: CreatorCoin) => coin.symbol === primaryCoinSymbol)?.balance ?? walletBalance;
   const poolBalanceValue = primaryCoinBalance;
   const poolBalanceDisplay =
     isStatsLoading && primaryCoinBalance === 0 ? '…' : formatNumber(primaryCoinBalance);
@@ -202,6 +208,18 @@ export default function DashboardLayout() {
           </button>
 
           <button
+            onClick={() => goToTab('social-insights')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              activeTab === 'social-insights'
+                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                : 'text-slate-600 hover:bg-purple-50'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5" />
+            <span>Social Insights</span>
+          </button>
+
+          <button
             onClick={() => goToTab('profile')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
               activeTab === 'profile'
@@ -223,7 +241,12 @@ export default function DashboardLayout() {
       {/* Mobile Sidebar */}
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setSidebarOpen(false)}>
-          <aside className="w-64 bg-white h-full p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <aside
+            className="w-64 bg-white h-full p-6 overflow-y-auto"
+            onClick={(event: ClickEvent) => {
+              event.stopPropagation();
+            }}
+          >
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
@@ -244,6 +267,7 @@ export default function DashboardLayout() {
                 { tab: 'discover' as TabType, icon: Search, label: 'Discover' },
                 { tab: 'my-coin' as TabType, icon: Coins, label: 'My Coin' },
                 { tab: 'wallet' as TabType, icon: WalletIcon, label: 'Wallet' },
+                { tab: 'social-insights' as TabType, icon: BarChart3, label: 'Social Insights' },
                 { tab: 'profile' as TabType, icon: Settings, label: 'Profile & Settings' },
               ].map(({ tab, icon: Icon, label }) => (
                 <button
@@ -340,6 +364,8 @@ export default function DashboardLayout() {
           )}
 
           {activeTab === 'profile' && <ProfileSection />}
+
+          {activeTab === 'social-insights' && <SocialInsightsSection />}
         </main>
       </div>
 
