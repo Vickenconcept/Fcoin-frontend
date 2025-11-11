@@ -105,6 +105,7 @@ export function SocialInsightsSection() {
                   <Button
                     key={page.id}
                     variant={page.id === activePageId ? 'default' : 'outline'}
+                    className="bg-purple-600 text-white hover:bg-purple-700"
                     size="sm"
                     onClick={() => handleSelectPage(page.id)}
                   >
@@ -150,12 +151,12 @@ export function SocialInsightsSection() {
           <p className="text-slate-500 mb-4">
             Sync your Facebook Page to begin tracking post engagement.
           </p>
-          <Button disabled={!activePageId || isSyncing} onClick={() => handleSync(activePageId)}>
+          <Button className="bg-purple-600 text-white hover:bg-purple-700" disabled={!activePageId || isSyncing} onClick={() => handleSync(activePageId)}>
             {isSyncing ? 'Syncing…' : 'Sync Now'}
           </Button>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2">
           {posts.map((post: SocialPost) => {
             const latestMetric = post.metrics?.[0];
             const metadata = (post.metadata as Record<string, unknown> | undefined) ?? undefined;
@@ -174,7 +175,7 @@ export function SocialInsightsSection() {
             const message = post.message?.trim() ? post.message : 'No caption available.';
 
             return (
-              <Card key={post.id} className="p-3 border-purple-100">
+              <Card key={post.id} className="p-3 border-purple-100 bg-white">
                 <div className="flex gap-3">
                   <div className="w-20 flex-shrink-0">
                     {post.full_picture_url ? (
@@ -210,9 +211,9 @@ export function SocialInsightsSection() {
                       </span>
                     </div>
 
-                    <p className="text-slate-800 text-sm leading-relaxed line-clamp-3 truncate h-10 overflow-hidden">
+                    {/* <p className="text-slate-800 text-sm leading-relaxed line-clamp-3 truncate h-10 overflow-hidden">
                       {message}
-                    </p>
+                    </p> */}
 
                     {stats.length > 0 ? (
                       <div className="flex flex-wrap gap-2 text-xs">
