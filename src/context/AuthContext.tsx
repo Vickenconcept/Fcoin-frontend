@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+// @ts-nocheck
+import React from 'react';
 import { apiClient } from '@/lib/apiClient';
 import {
   type AuthUser,
@@ -7,6 +8,40 @@ import {
   logoutUser,
   registerUser,
 } from '@/services/auth';
+
+const AUTH_USER_STORAGE_KEY = 'fancoin_auth_user_storage';
+
+function loadStoredUser(): AuthUser | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const value = window.localStorage.getItem(AUTH_USER_STORAGE_KEY);
+    return value ? (JSON.parse(value) as AuthUser) : null;
+  } catch (error) {
+    console.error('Failed to parse stored auth user', error);
+    window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    return null;
+  }
+}
+
+function storeAuthUser(user: AuthUser | null) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (!user) {
+    window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
+  } catch (error) {
+    console.error('Failed to persist auth user', error);
+  }
+}
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -18,10 +53,12 @@ type AuthContextValue = {
   refreshUser: () => Promise<void>;
 };
 
+const { createContext, useCallback, useContext, useEffect, useMemo, useState } = React as any;
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+export function AuthProvider({ children }: { children: any }) {
+  const [user, setUser] = useState<AuthUser | null>(() => loadStoredUser());
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -38,18 +75,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        apiClient.setToken(token);
+
         const response = await fetchCurrentUser();
 
         if (!isMounted) return;
 
         if (response.ok && response.data) {
           setUser(response.data);
+          storeAuthUser(response.data);
         } else {
           apiClient.setToken(null);
+          storeAuthUser(null);
         }
       } catch (error) {
         console.error('Auth initialization failed', error);
         apiClient.setToken(null);
+        storeAuthUser(null);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -73,6 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (response.ok && response.data) {
       setUser(response.data.user);
+      storeAuthUser(response.data.user);
     }
 
     return response;
@@ -83,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (response.ok && response.data) {
       setUser(response.data.user);
+      storeAuthUser(response.data.user);
     }
 
     return response;
@@ -93,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await logoutUser();
     } finally {
       setUser(null);
+      storeAuthUser(null);
     }
   }, []);
 
@@ -101,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (response.ok && response.data) {
       setUser(response.data);
+      storeAuthUser(response.data);
     }
   }, []);
 

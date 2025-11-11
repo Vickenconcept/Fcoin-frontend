@@ -24,9 +24,9 @@ export async function registerUser(
     avatar_url?: string;
   },
 ): Promise<ApiResponse<AuthPayload>> {
-  const response = await apiClient.request<AuthPayload>('/v1/auth/signup', {
+  const response = await apiClient.request<AuthPayload>('/v1/auth/register', {
     method: 'POST',
-    body: input,
+    body: JSON.stringify(input),
     skipAuth: true,
   });
 
@@ -42,7 +42,7 @@ export async function loginUser(
 ): Promise<ApiResponse<AuthPayload>> {
   const response = await apiClient.request<AuthPayload>('/v1/auth/login', {
     method: 'POST',
-    body: input,
+    body: JSON.stringify(input),
     skipAuth: true,
   });
 

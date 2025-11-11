@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RefreshCcw, TrendingUp, Users } from 'lucide-react';
 import { useFacebookPages, ConnectedFacebookPage } from '../hooks/useFacebookPages';
 import { useFacebookPagePosts, SocialPost } from '../hooks/useFacebookPagePosts';
+import type { CreatorCoin } from '../hooks/useCoins';
 
 type NormalizedEngagedUser = {
   user_id: string;
@@ -26,6 +27,11 @@ type InputChangeEvent = {
   target: {
     value: string;
   };
+};
+
+type SocialInsightsSectionProps = {
+  coins: CreatorCoin[];
+  isCoinsLoading: boolean;
 };
 
 const normalizeEngagedUsers = (post: SocialPost): NormalizedEngagedUser[] => {
@@ -54,11 +60,13 @@ const normalizeEngagedUsers = (post: SocialPost): NormalizedEngagedUser[] => {
     .filter((user) => Boolean(user.user_id));
 };
 
-export function SocialInsightsSection() {
+export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsSectionProps) {
   const {
     pages,
     isLoading: isPagesLoading,
     loadPages,
+    updateRewardCoin,
+    isUpdating: isUpdatingRewardCoin,
   } = useFacebookPages();
 
   const {
@@ -241,6 +249,26 @@ export function SocialInsightsSection() {
     );
   };
 
+  const rewardCoinOptions = useMemo(() => {
+    const symbols = new Set<string>();
+    coins.forEach((coin) => symbols.add(coin.symbol));
+    if (selectedPage?.reward_coin_symbol) {
+      symbols.add(selectedPage.reward_coin_symbol);
+    }
+    symbols.add('FCN');
+    return Array.from(symbols).sort();
+  }, [coins, selectedPage?.reward_coin_symbol]);
+
+  const handleRewardCoinChange = (coinSymbol: string) => {
+    if (!selectedPage) {
+      return;
+    }
+
+    updateRewardCoin(selectedPage.id, coinSymbol).catch((error) => {
+      console.error('[SocialInsightsSection] updateRewardCoin', error);
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -300,48 +328,82 @@ export function SocialInsightsSection() {
             </div>
           )}
         </div>
-
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase text-slate-500">Interaction Type</p>
-            <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                <SelectItem value="reaction">Likes / Reactions</SelectItem>
-                <SelectItem value="comment">Comments</SelectItem>
-                <SelectItem value="share">Shares</SelectItem>
-              </SelectContent>
-            </Select>
+        {selectedPage && (
+          <div className="grid gap-3 md:grid-cols-2 md:items-end">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase text-slate-500">Reward Coin</p>
+              {isCoinsLoading ? (
+                <Skeleton className="h-10 w-full md:w-56" />
+              ) : rewardCoinOptions.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  Create a coin in the My Coin section to enable rewards for this page.
+                </p>
+              ) : (
+                <Select
+                  value={selectedPage.reward_coin_symbol ?? undefined}
+                  onValueChange={handleRewardCoinChange}
+                  disabled={isUpdatingRewardCoin}
+                >
+                  <SelectTrigger className="w-full md:w-56">
+                    <SelectValue placeholder="Select coin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rewardCoinOptions.map((symbol) => (
+                      <SelectItem key={symbol} value={symbol}>
+                        {symbol}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <p className="text-xs text-slate-500">
+                Choose which of your creator coins funds engagement rewards for this page.
+              </p>
+            </div>
           </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase text-slate-500">Fan Name</p>
-            <Input
-              placeholder="Search by fan name"
-              value={filterSearch}
-              onChange={(event: InputChangeEvent) => setFilterSearch(event.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase text-slate-500">Post Date</p>
-            <Select value={filterDate} onValueChange={(value: string) => setFilterDate(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Any date" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Any date</SelectItem>
-                <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="30d">Last 30 days</SelectItem>
-                <SelectItem value="90d">Last 90 days</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        )}
       </Card>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase text-slate-500">Interaction Type</p>
+          <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="reaction">Likes / Reactions</SelectItem>
+              <SelectItem value="comment">Comments</SelectItem>
+              <SelectItem value="share">Shares</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase text-slate-500">Fan Name</p>
+          <Input
+            placeholder="Search by fan name"
+            value={filterSearch}
+            onChange={(event: InputChangeEvent) => setFilterSearch(event.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase text-slate-500">Post Date</p>
+          <Select value={filterDate} onValueChange={(value: string) => setFilterDate(value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Any date" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any date</SelectItem>
+              <SelectItem value="7d">Last 7 days</SelectItem>
+              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="90d">Last 90 days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {isPostsLoading ? (
         <div className="space-y-3">
@@ -423,9 +485,9 @@ export function SocialInsightsSection() {
                       </span>
                     </div>
 
-                    <p className="text-slate-800 text-sm leading-relaxed line-clamp-3 truncate h-12 overflow-hidden">
+                    {/* <p className="text-slate-800 text-sm leading-relaxed line-clamp-3 truncate h-12 overflow-hidden">
                       {message}
-                    </p>
+                    </p> */}
 
                     {stats.length > 0 ? (
                       <div className="flex flex-wrap gap-2 text-xs">

@@ -18,6 +18,7 @@ export function FacebookPagesManager({ open, onOpenChange }: FacebookPagesManage
     isLoading,
     isLoadingAvailable,
     isSaving,
+    isUpdating,
     loadPages,
     loadAvailablePages,
     connectPage,
@@ -43,7 +44,7 @@ export function FacebookPagesManager({ open, onOpenChange }: FacebookPagesManage
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl bg-white">
         <DialogHeader>
           <DialogTitle>Manage Facebook Pages</DialogTitle>
         </DialogHeader>
@@ -84,6 +85,12 @@ export function FacebookPagesManager({ open, onOpenChange }: FacebookPagesManage
                           {page.category ?? 'No category'} · Connected{' '}
                           {page.connected_at ? new Date(page.connected_at).toLocaleString() : '—'}
                         </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Reward Coin:{' '}
+                          <span className="font-medium text-slate-700">
+                            {page.reward_coin_symbol ?? 'Not set'}
+                          </span>
+                        </p>
                         {page.sync_status && (
                           <Badge className="mt-2 bg-purple-100 text-purple-600 border-purple-200">
                             {page.sync_status}
@@ -93,7 +100,7 @@ export function FacebookPagesManager({ open, onOpenChange }: FacebookPagesManage
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={isSaving}
+                        disabled={isSaving || isUpdating}
                         onClick={() => disconnectPage(page.id)}
                       >
                         Disconnect
@@ -149,6 +156,7 @@ export function FacebookPagesManager({ open, onOpenChange }: FacebookPagesManage
                           size="sm"
                           disabled={isSaving}
                           onClick={() => connectPage(page.page_id)}
+                          className="bg-purple-600 text-white hover:bg-purple-700"
                         >
                           Connect Page
                         </Button>

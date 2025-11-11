@@ -365,7 +365,9 @@ export default function DashboardLayout() {
 
           {activeTab === 'profile' && <ProfileSection />}
 
-          {activeTab === 'social-insights' && <SocialInsightsSection />}
+          {activeTab === 'social-insights' && (
+            <SocialInsightsSection coins={coins} isCoinsLoading={isCoinsLoading} />
+          )}
         </main>
       </div>
 

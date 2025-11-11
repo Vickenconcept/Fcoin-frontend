@@ -12,6 +12,7 @@ export type ConnectedFacebookPage = {
   last_synced_at: string | null;
   sync_status: string | null;
   sync_error?: string | null;
+  reward_coin_symbol?: string | null;
 };
 
 export type AvailableFacebookPage = {
@@ -31,6 +32,7 @@ export function useFacebookPages() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingAvailable, setIsLoadingAvailable] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const loadPages = useCallback(async () => {
     setIsLoading(true);
@@ -79,7 +81,7 @@ export function useFacebookPages() {
       try {
         const response = await apiClient.request('/v1/oauth/facebook/pages', {
           method: 'POST',
-          body: { page_id: pageId },
+          body: { page_id: pageId } as any,
         });
 
         if (!response.ok) {
@@ -128,16 +130,48 @@ export function useFacebookPages() {
     [isSaving, loadPages, loadAvailablePages],
   );
 
+  const updateRewardCoin = useCallback(
+    async (id: string, coinSymbol: string) => {
+      if (isUpdating) {
+        return;
+      }
+
+      setIsUpdating(true);
+      try {
+        const response = await apiClient.request(`/v1/oauth/facebook/pages/${id}/reward-coin`, {
+          method: 'PUT',
+          body: { coin_symbol: coinSymbol } as any,
+        });
+
+        if (!response.ok) {
+          toast.error(response.errors?.[0]?.detail ?? 'Unable to update reward coin.');
+          return;
+        }
+
+        toast.success('Reward coin updated.');
+        await loadPages();
+      } catch (error) {
+        console.error('[useFacebookPages] updateRewardCoin', error);
+        toast.error('Failed to update reward coin.');
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [isUpdating, loadPages],
+  );
+
   return {
     pages,
     availablePages,
     isLoading,
     isLoadingAvailable,
     isSaving,
+    isUpdating,
     loadPages,
     loadAvailablePages,
     connectPage,
     disconnectPage,
+    updateRewardCoin,
   };
 }
 

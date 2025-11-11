@@ -2,6 +2,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? 'http://localhost:8000/api';
 
 const TOKEN_COOKIE = 'fancoin_auth_token';
+const TOKEN_STORAGE_KEY = 'fancoin_auth_token_storage';
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 function getCookie(name: string): string | null {
@@ -37,6 +38,22 @@ function deleteCookie(name: string) {
   document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
+function setStorageToken(token: string | null) {
+  if (typeof window === 'undefined') return;
+
+  if (token) {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  } else {
+    window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+  }
+}
+
+function getStorageToken(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  return window.localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
 type ApiError = {
   title?: string;
   detail?: string;
@@ -65,8 +82,10 @@ class ApiClient {
 
     if (token) {
       setCookie(TOKEN_COOKIE, token, COOKIE_MAX_AGE_SECONDS);
+      setStorageToken(token);
     } else {
       deleteCookie(TOKEN_COOKIE);
+      setStorageToken(null);
     }
   }
 
@@ -126,7 +145,7 @@ class ApiClient {
   }
 
   private loadToken(): string | null {
-    return getCookie(TOKEN_COOKIE);
+    return getStorageToken() ?? getCookie(TOKEN_COOKIE);
   }
 }
 
