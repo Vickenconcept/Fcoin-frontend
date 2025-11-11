@@ -60,7 +60,7 @@ export function LaunchCoinModal({ open, onOpenChange, onSuccess }: LaunchCoinMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="bg-white">
         <DialogHeader>
           <DialogTitle>Create Your Coin</DialogTitle>
         </DialogHeader>

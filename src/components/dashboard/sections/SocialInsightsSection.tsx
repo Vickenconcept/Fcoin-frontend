@@ -3,9 +3,56 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RefreshCcw, TrendingUp } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RefreshCcw, TrendingUp, Users } from 'lucide-react';
 import { useFacebookPages, ConnectedFacebookPage } from '../hooks/useFacebookPages';
 import { useFacebookPagePosts, SocialPost } from '../hooks/useFacebookPagePosts';
+
+type NormalizedEngagedUser = {
+  user_id: string;
+  name?: string;
+  interactions: Array<{ type: string; extra: Record<string, unknown> }>;
+};
+
+type InputChangeEvent = {
+  target: {
+    value: string;
+  };
+};
+
+const normalizeEngagedUsers = (post: SocialPost): NormalizedEngagedUser[] => {
+  const metadata = (post.metadata as Record<string, unknown> | undefined) ?? undefined;
+  const rawUsers = Array.isArray((metadata as any)?.engaged_users)
+    ? ((metadata as any).engaged_users as Array<any>)
+    : [];
+
+  return rawUsers
+    .map((raw) => {
+      const userId = raw?.user_id ? String(raw.user_id) : '';
+      const name = typeof raw?.name === 'string' ? raw.name : undefined;
+      const interactions = Array.isArray(raw?.interactions)
+        ? (raw.interactions as Array<any>).map((interaction) => ({
+            type: String(interaction?.type ?? '').toUpperCase(),
+            extra: (interaction?.extra ?? {}) as Record<string, unknown>,
+          }))
+        : [];
+
+      return {
+        user_id: userId,
+        name,
+        interactions,
+      } satisfies NormalizedEngagedUser;
+    })
+    .filter((user) => Boolean(user.user_id));
+};
 
 export function SocialInsightsSection() {
   const {
@@ -25,6 +72,11 @@ export function SocialInsightsSection() {
   } = useFacebookPagePosts();
 
   const [activePageId, setActivePageId] = useState(null as string | null);
+  const [engagementModalPost, setEngagementModalPost] = useState<SocialPost | null>(null);
+  const [engagementModalOpen, setEngagementModalOpen] = useState(false);
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterDate, setFilterDate] = useState<string>('all');
 
   useEffect(() => {
     loadPages().catch((error: unknown) => console.error('[SocialInsightsSection] loadPages', error));
@@ -67,6 +119,128 @@ export function SocialInsightsSection() {
     syncPage(id, true).catch((error: unknown) => console.error('[SocialInsightsSection] syncPage', error));
   };
 
+  const filteredPosts = useMemo(() => {
+    const filterTypeUpper = filterType.toUpperCase();
+
+    return posts.filter((post) => {
+      const engagedUsers = normalizeEngagedUsers(post);
+
+      const interactionsMatch =
+        filterType === 'all' ||
+        engagedUsers.some((user) =>
+          user.interactions?.some((interaction) => interaction.type === filterTypeUpper),
+        );
+
+      const searchMatch = filterSearch
+        ? engagedUsers.some((user) =>
+            (user.name || '').toLowerCase().includes(filterSearch.trim().toLowerCase()),
+          )
+        : true;
+
+      const dateMatch = (() => {
+        if (filterDate === 'all' || !post.published_at) {
+          return true;
+        }
+
+        const published = new Date(post.published_at).getTime();
+        const now = Date.now();
+        const day = 24 * 60 * 60 * 1000;
+
+        switch (filterDate) {
+          case '7d':
+            return now - published <= 7 * day;
+          case '30d':
+            return now - published <= 30 * day;
+          case '90d':
+            return now - published <= 90 * day;
+          default:
+            return true;
+        }
+      })();
+
+      return interactionsMatch && searchMatch && dateMatch;
+    });
+  }, [posts, filterType, filterSearch, filterDate]);
+
+  const openEngagementModal = (post: SocialPost) => {
+    setEngagementModalPost(post);
+    setEngagementModalOpen(true);
+  };
+
+  const renderEngagementModal = () => {
+    if (!engagementModalPost) {
+      return null;
+    }
+
+    const engagedUsers = normalizeEngagedUsers(engagementModalPost);
+
+    const items = engagedUsers.flatMap((user) =>
+      user.interactions.map((interaction) => ({
+        userName: user.name ?? user.user_id,
+        userId: user.user_id,
+        type: interaction.type,
+        extra: interaction.extra ?? {},
+      })),
+    );
+
+    return (
+      <Dialog open={engagementModalOpen} onOpenChange={setEngagementModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Engagement Details</DialogTitle>
+            <DialogDescription>
+              {engagementModalPost.permalink_url ? (
+                <a
+                  href={engagementModalPost.permalink_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-600 hover:underline"
+                >
+                  View post on Facebook
+                </a>
+              ) : (
+                <span className="text-sm text-muted-foreground">No permalink available</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {items.length === 0 ? (
+            <div className="py-8 text-center text-sm text-slate-500">
+              No fan engagement has been recorded for this post yet.
+            </div>
+          ) : (
+            <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-2">
+              {items.map((item, index) => (
+                <div
+                  key={`${item.userId}-${item.type}-${index}`}
+                  className="rounded-lg border border-purple-100 bg-purple-50/40 px-4 py-3"
+                >
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-purple-500" />
+                      <span className="font-semibold text-slate-900">{item.userName}</span>
+                    </div>
+                    <Badge className="bg-purple-100 text-purple-600 border-purple-200 uppercase text-xs">
+                      {item.type}
+                    </Badge>
+                  </div>
+                  {item.extra?.message && (
+                    <p className="mt-2 text-sm text-slate-700">{item.extra.message as string}</p>
+                  )}
+                  <div className="mt-1 text-xs text-slate-500">
+                    {item.extra?.created_time
+                      ? new Date(item.extra.created_time as string).toLocaleString()
+                      : 'N/A'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -86,7 +260,7 @@ export function SocialInsightsSection() {
         </Button>
       </div>
 
-      <Card className="p-4 border-purple-100">
+      <Card className="p-4 border-purple-100 space-y-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-slate-600 mb-2">Connected Pages</p>
@@ -126,6 +300,47 @@ export function SocialInsightsSection() {
             </div>
           )}
         </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase text-slate-500">Interaction Type</p>
+            <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="reaction">Likes / Reactions</SelectItem>
+                <SelectItem value="comment">Comments</SelectItem>
+                <SelectItem value="share">Shares</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase text-slate-500">Fan Name</p>
+            <Input
+              placeholder="Search by fan name"
+              value={filterSearch}
+              onChange={(event: InputChangeEvent) => setFilterSearch(event.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase text-slate-500">Post Date</p>
+            <Select value={filterDate} onValueChange={(value: string) => setFilterDate(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Any date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any date</SelectItem>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+                <SelectItem value="90d">Last 90 days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </Card>
 
       {isPostsLoading ? (
@@ -157,12 +372,9 @@ export function SocialInsightsSection() {
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {posts.map((post: SocialPost) => {
+          {filteredPosts.map((post: SocialPost) => {
             const latestMetric = post.metrics?.[0];
-            const metadata = (post.metadata as Record<string, unknown> | undefined) ?? undefined;
-            const engagedUsers = Array.isArray((metadata as any)?.engaged_users)
-              ? ((metadata as any).engaged_users as Array<{ user_id: string; name?: string }>)
-              : [];
+            const engagedUsers = normalizeEngagedUsers(post);
             const stats = [
               { label: 'Likes', value: latestMetric?.like_count ?? 0 },
               { label: 'Comments', value: latestMetric?.comment_count ?? 0 },
@@ -211,9 +423,9 @@ export function SocialInsightsSection() {
                       </span>
                     </div>
 
-                    {/* <p className="text-slate-800 text-sm leading-relaxed line-clamp-3 truncate h-10 overflow-hidden">
+                    <p className="text-slate-800 text-sm leading-relaxed line-clamp-3 truncate h-12 overflow-hidden">
                       {message}
-                    </p> */}
+                    </p>
 
                     {stats.length > 0 ? (
                       <div className="flex flex-wrap gap-2 text-xs">
@@ -244,6 +456,16 @@ export function SocialInsightsSection() {
                       <p className="text-[11px] text-slate-400">
                         Synced {post.synced_at ? new Date(post.synced_at).toLocaleString() : '—'}
                       </p>
+                      {engagedUsers.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => openEngagementModal(post)}
+                        >
+                          View Engagement
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -252,6 +474,7 @@ export function SocialInsightsSection() {
           })}
         </div>
       )}
+      {renderEngagementModal()}
     </div>
   );
 }

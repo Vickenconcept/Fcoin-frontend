@@ -70,7 +70,7 @@ export function TopUpModal({ open, onOpenChange, coinSymbol, conversionRate, ret
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="bg-white">
         <DialogHeader>
           <DialogTitle>Fund {coinSymbol} Pool</DialogTitle>
         </DialogHeader>

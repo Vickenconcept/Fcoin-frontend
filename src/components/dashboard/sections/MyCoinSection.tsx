@@ -191,7 +191,7 @@ export function MyCoinSection({
                   Manage every coin you’ve launched. Fund pools and monitor balances in one place.
                 </p>
               </div>
-              <Button onClick={onOpenLaunchModal}>Create New Coin</Button>
+              <Button className="bg-purple-600 text-white hover:bg-purple-700" onClick={onOpenLaunchModal}>Create New Coin</Button>
             </div>
 
             {coinsLoading ? (
@@ -199,7 +199,7 @@ export function MyCoinSection({
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {sortedCoins.map((coin) => (
-                  <Card key={coin.id} className="border-purple-100 p-5">
+                  <Card key={coin.id} className="border-purple-100 p-5 bg-white">
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <p className="text-slate-900 font-semibold text-lg">{coin.symbol}</p>
@@ -215,12 +215,12 @@ export function MyCoinSection({
                     )}
                     <div className="flex flex-wrap gap-3">
                       <Button
-                        className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                        className="bg-purple-600 text-white hover:bg-purple-700"
                         onClick={() => openTopUpModal(coin)}
                       >
                         Fund {coin.symbol}
                       </Button>
-                      <Button variant="outline" onClick={onOpenAllocateModal}>
+                      <Button className="bg-purple-600 text-white hover:bg-purple-700" variant="outline" onClick={onOpenAllocateModal}>
                         Allocate Rewards
                       </Button>
                     </div>
@@ -269,7 +269,7 @@ export function MyCoinSection({
 
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                className="w-full bg-purple-600 text-white hover:bg-purple-700"
                 disabled={isRewardRulesLoading || isRewardRulesSaving}
               >
                 {isRewardRulesSaving ? 'Saving…' : 'Save Settings'}
@@ -280,7 +280,7 @@ export function MyCoinSection({
           <Card className="p-6 border-purple-100">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-slate-900 text-lg font-semibold">My Followers ({followerCountDisplay})</h3>
-              <Button variant="outline" size="sm">
+              <Button className="bg-purple-600 text-white hover:bg-purple-700" disabled={true} variant="outline" size="sm">
                 Export Data
               </Button>
             </div>
