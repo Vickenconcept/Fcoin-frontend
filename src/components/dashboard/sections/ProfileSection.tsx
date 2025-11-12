@@ -45,18 +45,48 @@ export function ProfileSection() {
     accountsMap,
     isLoading,
     isConnecting,
+    pendingRecovery,
+    isRecovering,
+    recoverFacebookProfile,
+    dismissRecovery,
     connectFacebookProfile,
     connectFacebookPages,
     connectInstagram,
     disconnect,
-  } =
-    useSocialAccounts();
+  } = useSocialAccounts();
   const [isFacebookManagerOpen, setIsFacebookManagerOpen] = useState(false);
 
   const providers = useMemo(() => SOCIAL_PROVIDERS, []);
 
   return (
     <div className="space-y-6">
+      {pendingRecovery && (
+        <Card className="border-amber-200 bg-amber-50 p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h4 className="text-slate-900 font-semibold">Reconnect your Facebook profile</h4>
+              <p className="text-sm text-slate-600">
+                We detected that {pendingRecovery.providerUsername ?? 'this Facebook profile'} is linked to another
+                FanCoin account. If this is really you, transfer it now to keep earning rewards here.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                disabled={isRecovering}
+                className="bg-purple-600 text-white hover:bg-purple-700"
+                onClick={() => recoverFacebookProfile().catch(() => {})}
+              >
+                {isRecovering ? 'Transferring…' : 'Transfer Profile'}
+              </Button>
+              <Button size="sm" variant="outline" onClick={dismissRecovery} disabled={isRecovering}>
+                Not now
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Profile Info */}
       <Card className="p-6 border-purple-100">
         <h3 className="text-slate-900 mb-6">Profile Information</h3>
