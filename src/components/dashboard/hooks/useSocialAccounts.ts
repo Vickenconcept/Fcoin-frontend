@@ -6,7 +6,7 @@ type PendingRecovery = {
   token: string;
   providerUserId: string;
   providerUsername?: string | null;
-  mode: 'profile' | 'pages';
+  mode: 'profile' | 'pages' | 'business' | 'personal';
 };
 
 export type SocialAccount = {
@@ -23,7 +23,8 @@ const API_ORIGIN = new URL(API_BASE_URL).origin;
 type ConnectableProvider = 'facebook' | 'instagram';
 
 type ConnectOptions = {
-  mode?: 'profile' | 'pages';
+  mode?: 'profile' | 'pages' | 'business' | 'personal';
+  label?: string;
 };
 
 const providerLabels: Record<ConnectableProvider, string> = {
@@ -83,9 +84,11 @@ export function useSocialAccounts() {
         return;
       }
 
+      const providerLabel = options.label ?? providerLabels[provider];
+
       try {
         popup.document.write(
-          '<!DOCTYPE html><title>Connecting…</title><body style="font-family:sans-serif;text-align:center;padding:2rem;">Connecting to Facebook…</body>',
+          `<!DOCTYPE html><title>Connecting…</title><body style="font-family:sans-serif;text-align:center;padding:2rem;">Connecting to ${providerLabel}…</body>`,
         );
         popup.document.close();
       } catch (contentError) {
@@ -115,7 +118,7 @@ export function useSocialAccounts() {
 
         if (!response.ok || !response.data?.url) {
           const message =
-            response.errors?.[0]?.detail ?? `Unable to start ${providerLabels[provider]} connection.`;
+            response.errors?.[0]?.detail ?? `Unable to start ${providerLabel} connection.`;
           toast.error(message);
           console.debug('[useSocialAccounts] login-url request failed', { provider, response });
           popup.close();
@@ -130,7 +133,7 @@ export function useSocialAccounts() {
         });
       } catch (error) {
         console.error(`[useSocialAccounts] connect ${provider} error before popup navigation`, error);
-        toast.error(`Unable to connect ${providerLabels[provider]} account.`);
+        toast.error(`Unable to connect ${providerLabel} account.`);
         popup.close();
         setIsConnecting(false);
         return;
@@ -167,7 +170,7 @@ export function useSocialAccounts() {
         }
 
         if (payload.status === 'success') {
-          toast.success(payload.message ?? `${providerLabels[provider]} connected.`);
+          toast.success(payload.message ?? `${providerLabel} connected.`);
           load().catch((reloadError) => {
             console.error('[useSocialAccounts] reload after connect failed', reloadError);
           });
@@ -184,14 +187,14 @@ export function useSocialAccounts() {
           const errorMessage =
             typeof payload.message === 'string' && payload.message.trim().length > 0
               ? payload.message
-              : `${providerLabels[provider]} connection needs action.`;
+              : `${providerLabel} connection needs action.`;
 
           toast.error(errorMessage);
         } else {
           const errorMessage =
             typeof payload.message === 'string' && payload.message.trim().length > 0
               ? payload.message
-              : `${providerLabels[provider]} connection was cancelled.`;
+              : `${providerLabel} connection was cancelled.`;
 
           toast.error(errorMessage);
         }
@@ -210,7 +213,7 @@ export function useSocialAccounts() {
           });
 
           if (!popupClosed && !pendingRecovery) {
-            toast.error('Facebook connection was cancelled.');
+            toast.error(`${providerLabel} connection was cancelled.`);
             clearListeners('popup-closed');
           }
         }
@@ -298,9 +301,13 @@ export function useSocialAccounts() {
     isRecovering,
     recoverFacebookProfile,
     dismissRecovery,
-    connectFacebookProfile: () => connect('facebook', { mode: 'profile' }),
-    connectFacebookPages: () => connect('facebook', { mode: 'pages' }),
-    connectInstagram: () => connect('instagram'),
+    connectFacebookProfile: () => connect('facebook', { mode: 'profile', label: 'Facebook Profile' }),
+    connectFacebookPages: () =>
+      connect('facebook', { mode: 'pages', label: 'Facebook with Pages' }),
+    connectInstagramBusiness: () =>
+      connect('instagram', { mode: 'business', label: 'Instagram Professional' }),
+    connectInstagramPersonal: () =>
+      connect('instagram', { mode: 'personal', label: 'Instagram Fan Profile' }),
     disconnect,
     reload: load,
   };
