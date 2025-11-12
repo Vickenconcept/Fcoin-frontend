@@ -8,6 +8,8 @@ export type AuthUser = {
   avatar_url?: string | null;
   verified_creator: boolean;
   default_coin_symbol: string;
+  token_capabilities?: string[];
+  user_type?: string;
 };
 
 export type AuthPayload = {

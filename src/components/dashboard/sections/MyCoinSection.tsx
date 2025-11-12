@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import * as React from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { Coins, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,19 @@ const demoMyFollowers = [
   { id: 4, name: 'Sam Chen', username: '@samc', avatar: '👨', earned: 87, lastActive: '1d ago' },
 ];
 
+const fallbackRewardRules: RewardRules = {
+  base_amount: 0,
+  per_type: {
+    like: 0,
+    comment: 0,
+    share: 0,
+    watch: 0,
+  },
+};
+
+type NumberInputEvent = { target: { value: string } };
+type FormSubmitEvent = { preventDefault: () => void };
+
 type MyCoinSectionProps = {
   coins: CreatorCoin[];
   coinsLoading: boolean;
@@ -23,11 +37,12 @@ type MyCoinSectionProps = {
   followerCountDisplay: string;
   onOpenLaunchModal: () => void;
   onOpenAllocateModal: () => void;
-  rewardRules: RewardRules;
+  rewardRules: RewardRules | null;
   onSaveRewardRules: (rules: RewardRules) => Promise<void>;
   isRewardRulesLoading: boolean;
   isRewardRulesSaving: boolean;
   conversionRate: number;
+  primaryCoinValueUsd: number;
   onAfterTopUp: () => Promise<void> | void;
 };
 
@@ -44,14 +59,15 @@ export function MyCoinSection({
   isRewardRulesLoading,
   isRewardRulesSaving,
   conversionRate,
+  primaryCoinValueUsd,
   onAfterTopUp,
 }: MyCoinSectionProps) {
-  const [localRules, setLocalRules] = useState<RewardRules>(rewardRules);
+  const [localRules, setLocalRules] = useState<RewardRules>(rewardRules ?? fallbackRewardRules);
   const [topUpModalOpen, setTopUpModalOpen] = useState(false);
   const [selectedCoin, setSelectedCoin] = useState<CreatorCoin | null>(null);
 
   useEffect(() => {
-    setLocalRules(rewardRules);
+    setLocalRules(rewardRules ?? fallbackRewardRules);
   }, [rewardRules]);
 
   useEffect(() => {
@@ -74,7 +90,7 @@ export function MyCoinSection({
     window.history.replaceState({}, '', window.location.pathname);
   }, [onAfterTopUp]);
 
-  const handleBaseAmountChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleBaseAmountChange = (event: NumberInputEvent) => {
     const value = Number(event.target.value);
     setLocalRules((prev) => ({
       ...prev,
@@ -82,7 +98,7 @@ export function MyCoinSection({
     }));
   };
 
-  const handlePerTypeChange = (type: string) => (event: ChangeEvent<HTMLInputElement>) => {
+  const handlePerTypeChange = (type: string) => (event: NumberInputEvent) => {
     const value = Number(event.target.value);
     setLocalRules((prev) => ({
       ...prev,
@@ -93,7 +109,7 @@ export function MyCoinSection({
     }));
   };
 
-  const handleSaveRewardRules = (event: FormEvent<HTMLFormElement>) => {
+  const handleSaveRewardRules = (event: FormSubmitEvent) => {
     event.preventDefault();
     onSaveRewardRules(localRules).catch((error) => {
       console.error('[MyCoinSection] Failed to save reward rules', error);
@@ -117,6 +133,13 @@ export function MyCoinSection({
 
   const primaryCoin = sortedCoins.find((coin) => coin.symbol === primaryCoinSymbol) ?? null;
   const hasCoins = sortedCoins.length > 0;
+  const formatCoinValue = useCallback(
+    (value: number) =>
+      Number.isFinite(value)
+        ? value.toLocaleString(undefined, { minimumFractionDigits: 6, maximumFractionDigits: 6 })
+        : '—',
+    [],
+  );
 
   const openTopUpModal = (coin: CreatorCoin) => {
     setSelectedCoin(coin);
@@ -163,6 +186,12 @@ export function MyCoinSection({
                   <div>
                     <p className="text-purple-100">Conversion</p>
                     <p className="text-lg font-semibold">1 USD = {conversionRate} {primaryCoinSymbol}</p>
+                  </div>
+                  <div>
+                    <p className="text-purple-100">Coin Value</p>
+                    <p className="text-lg font-semibold">
+                      1 {primaryCoinSymbol} = ${formatCoinValue(primaryCoinValueUsd)} USD
+                    </p>
                   </div>
                 </div>
               </div>
@@ -213,6 +242,9 @@ export function MyCoinSection({
                     {coin.description && (
                       <p className="text-slate-500 text-sm mb-4">{coin.description}</p>
                     )}
+                    <p className="text-slate-500 text-sm mb-4">
+                      1 {coin.symbol} = ${formatCoinValue(coin.value_usd ?? 0)} USD
+                    </p>
                     <div className="flex flex-wrap gap-3">
                       <Button
                         className="bg-purple-600 text-white hover:bg-purple-700"
@@ -315,6 +347,7 @@ export function MyCoinSection({
         onOpenChange={setTopUpModalOpen}
         coinSymbol={selectedCoin?.symbol ?? primaryCoinSymbol}
         conversionRate={conversionRate}
+        coinValueUsd={selectedCoin?.value_usd ?? primaryCoin?.value_usd ?? primaryCoinValueUsd}
         returnPath={`${window.location.origin}/dashboard/my-coin`}
       />
     </div>

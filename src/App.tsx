@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import AuthFlow from './components/AuthFlow';
+import AdminCoinValuesPage from './components/admin/AdminCoinValuesPage';
 import { useAuth } from '@/context/AuthContext';
 
 function LoadingScreen() {
@@ -15,7 +16,7 @@ function LoadingScreen() {
   );
 }
 
-function RequireAuth({ children }: { children: JSX.Element }) {
+function RequireAuth({ children }: { children: any }) {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
@@ -29,7 +30,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   return children;
 }
 
-function RedirectIfAuthenticated({ children }: { children: JSX.Element }) {
+function RedirectIfAuthenticated({ children }: { children: any }) {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
@@ -69,6 +70,14 @@ export default function App() {
           element={
             <RequireAuth>
               <Dashboard />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/coin-values"
+          element={
+            <RequireAuth>
+              <AdminCoinValuesPage />
             </RequireAuth>
           }
         />

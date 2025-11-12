@@ -9,6 +9,8 @@ export type CreatorCoin = {
   description: string | null;
   balance: number;
   created_at?: string | null;
+  value_usd?: number;
+  value_updated_at?: string | null;
 };
 
 type CoinsResponse = {

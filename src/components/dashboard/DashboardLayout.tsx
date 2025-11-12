@@ -12,6 +12,7 @@ import {
   Sparkles,
   Wallet as WalletIcon,
   X,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -51,6 +52,7 @@ export default function DashboardLayout() {
     walletBalance,
     walletCurrency,
     conversionRate,
+    primaryCoinValueUsd,
     earnedCoinsTotal,
     followerCount,
     followingCount,
@@ -80,13 +82,15 @@ export default function DashboardLayout() {
   };
 
   const primaryCoinSymbol = (user?.default_coin_symbol ?? walletCurrency ?? 'FCN').toUpperCase();
-  const primaryCoinBalance =
-    coins.find((coin: CreatorCoin) => coin.symbol === primaryCoinSymbol)?.balance ?? walletBalance;
+  const primaryCoin = coins.find((coin: CreatorCoin) => coin.symbol === primaryCoinSymbol) ?? null;
+  const primaryCoinBalance = primaryCoin?.balance ?? walletBalance;
   const poolBalanceValue = primaryCoinBalance;
   const poolBalanceDisplay =
     isStatsLoading && primaryCoinBalance === 0 ? '…' : formatNumber(primaryCoinBalance);
   const followerCountValue = followerCount ?? 0;
   const followingCountValue = followingCount ?? 0;
+
+  const isSuperAdmin = user?.user_type === 'super_admin';
 
   const myCoinName = primaryCoinSymbol;
 
@@ -286,6 +290,22 @@ export default function DashboardLayout() {
                   <span>{label}</span>
                 </button>
               ))}
+              {isSuperAdmin && (
+                <button
+                  onClick={() => {
+                    setSidebarOpen(false);
+                    navigate('/admin/coin-values');
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                    location.pathname.startsWith('/admin/coin-values')
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                      : 'text-slate-600 hover:bg-purple-50'
+                  }`}
+                >
+                  <ShieldCheck className="w-5 h-5" />
+                  <span>Manage Coin Values</span>
+                </button>
+              )}
             </nav>
           </aside>
         </div>
@@ -316,6 +336,18 @@ export default function DashboardLayout() {
                 </div>
               </Card>
 
+              {isSuperAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden md:inline-flex items-center gap-2"
+                  onClick={() => navigate('/admin/coin-values')}
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Manage Coin Values
+                </Button>
+              )}
+
               <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center cursor-pointer uppercase">
                 <span className="text-white font-medium">{userInitials}</span>
               </div>
@@ -344,7 +376,7 @@ export default function DashboardLayout() {
               coins={coins}
               coinsLoading={isCoinsLoading}
               primaryCoinSymbol={myCoinName}
-              primaryCoinBalance={poolBalanceValue}
+              primaryCoinBalance={primaryCoinBalance}
               followerCountDisplay={followerCountDisplay}
               onOpenLaunchModal={() => setLaunchCoinModalOpen(true)}
               onOpenAllocateModal={() => setAllocateModalOpen(true)}
@@ -353,6 +385,7 @@ export default function DashboardLayout() {
               isRewardRulesLoading={isRewardRulesLoading}
               isRewardRulesSaving={isRewardRulesSaving}
               conversionRate={conversionRate}
+              primaryCoinValueUsd={primaryCoinValueUsd}
               onAfterTopUp={async () => {
                 await Promise.all([refreshStats(), reloadCoins()]);
               }}
