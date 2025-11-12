@@ -6,7 +6,7 @@ type PendingRecovery = {
   token: string;
   providerUserId: string;
   providerUsername?: string | null;
-  mode: 'profile' | 'pages';
+  mode: 'profile' | 'pages' | 'creator' | 'fan';
 };
 
 export type SocialAccount = {
@@ -21,15 +21,16 @@ export type SocialAccount = {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api';
 const API_ORIGIN = new URL(API_BASE_URL).origin;
 
-type ConnectableProvider = 'facebook' | 'instagram';
+type ConnectableProvider = 'facebook' | 'instagram' | 'tiktok';
 
 type ConnectOptions = {
-  mode?: 'profile' | 'pages';
+  mode?: 'profile' | 'pages' | 'creator' | 'fan';
 };
 
 const providerLabels: Record<ConnectableProvider, string> = {
   facebook: 'Facebook',
   instagram: 'Instagram',
+  tiktok: 'TikTok',
 };
 
 export function useSocialAccounts() {
@@ -141,8 +142,6 @@ export function useSocialAccounts() {
 
       let popupClosed = false;
 
-      const allowedOrigins = new Set<string>([API_ORIGIN, window.location.origin]);
-
       const clearListeners = (reason: string) => {
         console.debug('[useSocialAccounts] clearing listeners', { provider, reason });
         window.removeEventListener('message', handleMessage);
@@ -151,12 +150,17 @@ export function useSocialAccounts() {
       };
 
       const handleMessage = (event: MessageEvent) => {
-        if (!allowedOrigins.has(event.origin)) {
+        const payload = event.data;
+        if (!payload) {
           return;
         }
 
-        const payload = event.data;
-        if (!payload || payload.provider !== provider) {
+        const expectedProviders = new Set<string>([provider]);
+        if (provider === 'tiktok') {
+          expectedProviders.add('tiktok_fan');
+        }
+
+        if (!expectedProviders.has(payload.provider)) {
           return;
         }
 
@@ -170,26 +174,43 @@ export function useSocialAccounts() {
         }
 
         if (payload.status === 'success') {
-          toast.success(payload.message ?? `${providerLabel} connected.`);
+          const connectionLabel =
+            payload.provider === 'tiktok_fan'
+              ? 'TikTok fan profile connected.'
+              : payload.provider === 'tiktok'
+              ? 'TikTok creator connected.'
+              : payload.provider === 'instagram'
+              ? 'Instagram connected.'
+              : payload.message ?? `${providerLabel} connected.`;
+
+          toast.success(connectionLabel);
           load().catch((reloadError) => {
             console.error('[useSocialAccounts] reload after connect failed', reloadError);
           });
         } else if (payload.status === 'recoverable') {
-          const recovery: PendingRecovery = {
-            token: payload.recovery_token,
-            providerUserId: payload.provider_user_id,
-            providerUsername: payload.provider_username,
-            mode: payload.mode ?? options.mode ?? 'profile',
-          };
+          if (payload.recovery_token) {
+            const recovery: PendingRecovery = {
+              token: payload.recovery_token,
+              providerUserId: payload.provider_user_id,
+              providerUsername: payload.provider_username,
+              mode: payload.mode ?? options.mode ?? 'profile',
+            };
 
-          setPendingRecovery(recovery);
+            setPendingRecovery(recovery);
 
-          const errorMessage =
-            typeof payload.message === 'string' && payload.message.trim().length > 0
-              ? payload.message
-              : `${providerLabel} connection needs action.`;
+            const recoveryLabel =
+              typeof payload.message === 'string' && payload.message.trim().length > 0
+                ? payload.message
+                : `${providerLabel} connection needs action.`;
 
-          toast.error(errorMessage);
+            toast.error(recoveryLabel);
+          } else {
+            toast.error(
+              typeof payload.message === 'string' && payload.message.trim().length > 0
+                ? payload.message
+                : `${providerLabel} connection was cancelled.`,
+            );
+          }
         } else {
           const errorMessage =
             typeof payload.message === 'string' && payload.message.trim().length > 0
@@ -302,10 +323,20 @@ export function useSocialAccounts() {
     return accounts.filter((account) => account.provider === 'instagram');
   }, [accounts]);
 
+  const tiktokCreatorAccounts = useMemo(() => {
+    return accounts.filter((account) => account.provider === 'tiktok');
+  }, [accounts]);
+
+  const tiktokFanAccounts = useMemo(() => {
+    return accounts.filter((account) => account.provider === 'tiktok_fan');
+  }, [accounts]);
+
   return {
     accounts,
     accountsMap,
     instagramAccounts,
+    tiktokCreatorAccounts,
+    tiktokFanAccounts,
     isLoading,
     isConnecting,
     pendingRecovery,
@@ -315,6 +346,8 @@ export function useSocialAccounts() {
     connectFacebookProfile: () => connect('facebook', { mode: 'profile' }),
     connectFacebookPages: () => connect('facebook', { mode: 'pages' }),
     connectInstagram: () => connect('instagram'),
+    connectTikTokCreator: () => connect('tiktok', { mode: 'creator' }),
+    connectTikTokFan: () => connect('tiktok', { mode: 'fan' }),
     disconnect,
     reload: load,
   };

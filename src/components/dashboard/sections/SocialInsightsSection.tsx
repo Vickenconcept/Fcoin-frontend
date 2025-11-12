@@ -13,10 +13,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Instagram, RefreshCcw, TrendingUp, Users } from 'lucide-react';
+import { Instagram, Music2, RefreshCcw, TrendingUp, Users } from 'lucide-react';
 import { useFacebookPages, ConnectedFacebookPage } from '../hooks/useFacebookPages';
 import { useFacebookPagePosts, SocialPost } from '../hooks/useFacebookPagePosts';
 import { useInstagramPosts } from '../hooks/useInstagramPosts';
+import { useTikTokPosts } from '../hooks/useTikTokPosts';
 import type { CreatorCoin } from '../hooks/useCoins';
 
 type NormalizedEngagedUser = {
@@ -95,13 +96,29 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     selectAccount: selectInstagramAccount,
   } = useInstagramPosts();
 
+  const {
+    posts: tiktokPosts,
+    accounts: tiktokAccounts,
+    account: tiktokAccount,
+    selectedAccountId: selectedTikTokAccountId,
+    isLoading: isTikTokLoading,
+    isSyncing: isTikTokSyncing,
+    isUpdatingRewardCoin: isUpdatingTikTokRewardCoin,
+    load: loadTikTokPosts,
+    sync: syncTikTok,
+    updateRewardCoin: updateTikTokRewardCoin,
+    selectAccount: selectTikTokAccount,
+  } = useTikTokPosts();
+
   const [activePageId, setActivePageId] = useState(null as string | null);
   const [engagementModalPost, setEngagementModalPost] = useState<SocialPost | null>(null);
   const [engagementModalOpen, setEngagementModalOpen] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
   const [filterSearch, setFilterSearch] = useState('');
   const [filterDate, setFilterDate] = useState<string>('all');
-  const [activeSocialTab, setActiveSocialTab] = useState<'facebook' | 'instagram'>('facebook');
+  const [activeSocialTab, setActiveSocialTab] = useState<'facebook' | 'instagram' | 'tiktok'>(
+    'facebook',
+  );
 
   useEffect(() => {
     loadPages().catch((error: unknown) => console.error('[SocialInsightsSection] loadPages', error));
@@ -131,12 +148,38 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
   }, [loadInstagramPosts]);
 
   useEffect(() => {
-    if (activeSocialTab === 'facebook' && pages.length === 0 && instagramAccounts.length > 0) {
-      setActiveSocialTab('instagram');
-    } else if (activeSocialTab === 'instagram' && instagramAccounts.length === 0 && pages.length > 0) {
-      setActiveSocialTab('facebook');
+    loadTikTokPosts().catch((error: unknown) =>
+      console.error('[SocialInsightsSection] loadTikTokPosts', error),
+    );
+  }, [loadTikTokPosts]);
+
+  useEffect(() => {
+    if (activeSocialTab === 'facebook') {
+      if (pages.length === 0) {
+        if (instagramAccounts.length > 0) {
+          setActiveSocialTab('instagram');
+        } else if (tiktokAccounts.length > 0) {
+          setActiveSocialTab('tiktok');
+        }
+      }
+    } else if (activeSocialTab === 'instagram') {
+      if (instagramAccounts.length === 0) {
+        if (pages.length > 0) {
+          setActiveSocialTab('facebook');
+        } else if (tiktokAccounts.length > 0) {
+          setActiveSocialTab('tiktok');
+        }
+      }
+    } else if (activeSocialTab === 'tiktok') {
+      if (tiktokAccounts.length === 0) {
+        if (pages.length > 0) {
+          setActiveSocialTab('facebook');
+        } else if (instagramAccounts.length > 0) {
+          setActiveSocialTab('instagram');
+        }
+      }
     }
-  }, [activeSocialTab, pages.length, instagramAccounts.length]);
+  }, [activeSocialTab, pages.length, instagramAccounts.length, tiktokAccounts.length]);
 
   const selectedPage = useMemo(() => {
     const targetId = activePageId ?? selectedPageId ?? '';
@@ -209,6 +252,10 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     () => applyFilters(instagramPosts),
     [applyFilters, instagramPosts],
   );
+  const tiktokFilteredPosts = useMemo(
+    () => applyFilters(tiktokPosts),
+    [applyFilters, tiktokPosts],
+  );
 
   const effectiveInstagramAccountId = useMemo(() => {
     return selectedInstagramAccountId ?? instagramAccounts[0]?.id ?? null;
@@ -223,6 +270,20 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     }
     return instagramAccount;
   }, [effectiveInstagramAccountId, instagramAccounts, instagramAccount]);
+
+  const effectiveTikTokAccountId = useMemo(() => {
+    return selectedTikTokAccountId ?? tiktokAccounts[0]?.id ?? null;
+  }, [selectedTikTokAccountId, tiktokAccounts]);
+
+  const selectedTikTokAccountMeta = useMemo(() => {
+    if (effectiveTikTokAccountId) {
+      const match = tiktokAccounts.find((item) => item.id === effectiveTikTokAccountId);
+      if (match) {
+        return match;
+      }
+    }
+    return tiktokAccount;
+  }, [effectiveTikTokAccountId, tiktokAccounts, tiktokAccount]);
 
   const openEngagementModal = (post: SocialPost) => {
     setEngagementModalPost(post);
@@ -245,8 +306,9 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
       })),
     );
 
+    const providerKey = (engagementModalPost.provider ?? '').toLowerCase();
     const providerLabel =
-      engagementModalPost.provider === 'instagram' ? 'Instagram' : 'Facebook';
+      providerKey === 'instagram' ? 'Instagram' : providerKey === 'tiktok' ? 'TikTok' : 'Facebook';
 
     return (
       <Dialog open={engagementModalOpen} onOpenChange={setEngagementModalOpen}>
@@ -331,6 +393,16 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     return Array.from(symbols).sort();
   }, [coins, selectedInstagramAccountMeta?.page?.reward_coin_symbol]);
 
+  const tiktokRewardCoinOptions = useMemo(() => {
+    const symbols = new Set<string>();
+    coins.forEach((coin) => symbols.add(coin.symbol));
+    if (selectedTikTokAccountMeta?.page?.reward_coin_symbol) {
+      symbols.add(selectedTikTokAccountMeta.page.reward_coin_symbol);
+    }
+    symbols.add('FCN');
+    return Array.from(symbols).sort();
+  }, [coins, selectedTikTokAccountMeta?.page?.reward_coin_symbol]);
+
   const handleRewardCoinChange = (coinSymbol: string) => {
     if (!selectedPage) {
       return;
@@ -352,6 +424,17 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     });
   };
 
+  const handleTikTokRewardCoinChange = (coinSymbol: string) => {
+    const pageId = selectedTikTokAccountMeta?.page?.id;
+    if (!pageId) {
+      return;
+    }
+
+    updateTikTokRewardCoin(pageId, coinSymbol).catch((error: unknown) => {
+      console.error('[SocialInsightsSection] updateTikTokRewardCoin', error);
+    });
+  };
+
   const handleSelectInstagramAccount = useCallback(
     (value: string | null) => {
       const accountId = value ?? null;
@@ -362,8 +445,20 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     [selectInstagramAccount],
   );
 
+  const handleSelectTikTokAccount = useCallback(
+    (value: string | null) => {
+      const accountId = value ?? null;
+      selectTikTokAccount(accountId).catch((error: unknown) => {
+        console.error('[SocialInsightsSection] selectTikTokAccount', error);
+      });
+    },
+    [selectTikTokAccount],
+  );
+
   const renderPostCard = (post: SocialPost) => {
-    const isInstagram = (post.provider ?? '').toLowerCase() === 'instagram';
+    const provider = (post.provider ?? '').toLowerCase();
+    const isInstagram = provider === 'instagram';
+    const isTikTok = provider === 'tiktok';
     const latestMetric = post.metrics?.[0];
     const engagedUsers = normalizeEngagedUsers(post);
 
@@ -375,7 +470,16 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
           { label: 'Impressions', value: latestMetric?.impression_count ?? 0 },
           { label: 'Engagement', value: latestMetric?.click_count ?? 0 },
           { label: 'Views', value: latestMetric?.view_count ?? 0 },
-        ].filter((stat) => stat.value !== null && stat.value !== undefined)
+        ]
+      : isTikTok
+      ? [
+          { label: 'Likes', value: latestMetric?.like_count ?? 0 },
+          { label: 'Comments', value: latestMetric?.comment_count ?? 0 },
+          { label: 'Shares', value: latestMetric?.share_count ?? 0 },
+          { label: 'Reach', value: latestMetric?.reach_count ?? 0 },
+          { label: 'Impressions', value: latestMetric?.impression_count ?? 0 },
+          { label: 'Views', value: latestMetric?.view_count ?? 0 },
+        ]
       : [
           { label: 'Likes', value: latestMetric?.like_count ?? 0 },
           { label: 'Comments', value: latestMetric?.comment_count ?? 0 },
@@ -383,20 +487,42 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
           { label: 'Reach', value: latestMetric?.reach_count ?? 0 },
           { label: 'Impressions', value: latestMetric?.impression_count ?? 0 },
           { label: 'Clicks', value: latestMetric?.click_count ?? 0 },
-        ].filter((stat) => stat.value !== null && stat.value !== undefined);
+        ];
 
-    const cardBorderClass = isInstagram ? 'border-orange-100' : 'border-purple-100';
+    const statsFiltered = stats.filter(
+      (stat) => stat.value !== null && stat.value !== undefined,
+    );
+
+    const cardBorderClass = isInstagram
+      ? 'border-orange-100'
+      : isTikTok
+      ? 'border-sky-100'
+      : 'border-purple-100';
     const badgeClass = isInstagram
       ? 'bg-orange-100 text-orange-600 border-orange-200 uppercase text-sm'
+      : isTikTok
+      ? 'bg-sky-100 text-sky-600 border-sky-200 uppercase text-sm'
       : 'bg-purple-100 text-purple-600 border-purple-200 uppercase text-sm';
     const engagedBadgeClass = isInstagram
       ? 'bg-emerald-100 text-emerald-700 border-emerald-200 text-sm'
+      : isTikTok
+      ? 'bg-cyan-100 text-cyan-700 border-cyan-200 text-sm'
       : 'bg-amber-100 text-amber-700 border-amber-200 text-sm';
-    const imageBorderClass = isInstagram ? 'border-orange-50' : 'border-purple-50';
+    const imageBorderClass = isInstagram
+      ? 'border-orange-50'
+      : isTikTok
+      ? 'border-sky-50'
+      : 'border-purple-50';
     const placeholderClass = isInstagram
       ? 'border-orange-200 bg-orange-50/40 text-orange-400'
+      : isTikTok
+      ? 'border-sky-200 bg-sky-50/40 text-sky-500'
       : 'border-purple-200 bg-purple-50/40 text-purple-400';
-    const viewLabel = isInstagram ? 'View on Instagram' : 'View on Facebook';
+    const viewLabel = isInstagram
+      ? 'View on Instagram'
+      : isTikTok
+      ? 'View on TikTok'
+      : 'View on Facebook';
 
     return (
       <Card key={post.id} className={`p-3 bg-white border ${cardBorderClass}`}>
@@ -433,9 +559,9 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
               </span>
             </div>
 
-            {stats.length > 0 ? (
+            {statsFiltered.length > 0 ? (
               <div className="flex flex-wrap gap-2 text-xs">
-                {stats.map((stat) => (
+                {statsFiltered.map((stat) => (
                   <div
                     key={stat.label}
                     className={`rounded-md border ${cardBorderClass} bg-slate-50 px-3 py-1`}
@@ -488,7 +614,9 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
 
       <Tabs
         value={activeSocialTab}
-        onValueChange={(value: string) => setActiveSocialTab(value as 'facebook' | 'instagram')}
+        onValueChange={(value: string) =>
+          setActiveSocialTab(value as 'facebook' | 'instagram' | 'tiktok')
+        }
         className="space-y-6"
       >
         <TabsList className="inline-flex w-full flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-1 md:w-auto">
@@ -503,6 +631,12 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
             className="flex-1 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white"
           >
             Instagram
+          </TabsTrigger>
+          <TabsTrigger
+            value="tiktok"
+            className="flex-1 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-sky-500 data-[state=active]:text-white"
+          >
+            TikTok
           </TabsTrigger>
         </TabsList>
 
@@ -862,6 +996,196 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
                   {instagramFilteredPosts.map((post: SocialPost) => renderPostCard(post))}
+                </div>
+              )}
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="tiktok" className="space-y-6 focus-visible:outline-none">
+          {tiktokAccounts.length === 0 && !isTikTokLoading ? (
+            <Card className="p-8 border-dashed border-sky-200 bg-white text-center">
+              <Music2 className="w-10 h-10 mx-auto text-sky-400 mb-4" />
+              <h3 className="text-slate-900 font-semibold mb-2">Connect TikTok</h3>
+              <p className="text-slate-500 mb-4">
+                Link your TikTok creator account from the Profile tab to sync videos and metrics.
+              </p>
+              <p className="text-xs text-slate-500">
+                Fans can also connect their TikTok profile so we can match their engagement on your
+                content.
+              </p>
+            </Card>
+          ) : (
+            <>
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  <Music2 className="h-5 w-5 text-sky-500" />
+                  <div>
+                    <h3 className="text-slate-900 text-lg font-semibold">TikTok Creator</h3>
+                    <p className="text-sm text-slate-500">
+                      {selectedTikTokAccountMeta?.tiktok_username
+                        ? `${
+                            selectedTikTokAccountMeta.tiktok_username.startsWith('@')
+                              ? ''
+                              : '@'
+                          }${selectedTikTokAccountMeta.tiktok_username}`
+                        : selectedTikTokAccountMeta?.tiktok_open_id ?? 'Connected account'}
+                    </p>
+                    {selectedTikTokAccountMeta?.page?.name && (
+                      <p className="text-xs text-slate-400">
+                        Display:{' '}
+                        <span className="text-slate-600">{selectedTikTokAccountMeta.page.name}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
+                  <div className="flex flex-wrap gap-2">
+                    {tiktokAccounts.map((entry) => {
+                      const label = entry.tiktok_username
+                        ? `${entry.tiktok_username.startsWith('@') ? '' : '@'}${entry.tiktok_username}`
+                        : entry.tiktok_open_id;
+                      const isActive = entry.id === effectiveTikTokAccountId;
+
+                      return (
+                        <Button
+                          key={entry.id}
+                          variant={isActive ? 'default' : 'outline'}
+                          className={
+                            isActive
+                              ? 'bg-sky-500 text-white hover:bg-sky-600'
+                              : 'border-sky-200 text-sky-600 hover:bg-sky-50'
+                          }
+                          size="sm"
+                          disabled={isTikTokLoading || isTikTokSyncing}
+                          onClick={() => handleSelectTikTokAccount(entry.id)}
+                        >
+                          {label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="border-sky-200 text-sky-600 hover:bg-sky-50"
+                    disabled={isTikTokSyncing || !effectiveTikTokAccountId}
+                    onClick={() => syncTikTok(true, undefined, effectiveTikTokAccountId)}
+                  >
+                    <RefreshCcw className="w-4 h-4 mr-2" />
+                    {isTikTokSyncing ? 'Syncing…' : 'Sync TikTok'}
+                  </Button>
+                </div>
+              </div>
+
+              {selectedTikTokAccountMeta?.page?.id && (
+                <Card className="border-sky-100 bg-white p-4">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase text-slate-500">Reward Coin</p>
+                    {isCoinsLoading ? (
+                      <Skeleton className="h-10 w-full md:w-56" />
+                    ) : tiktokRewardCoinOptions.length === 0 ? (
+                      <p className="text-sm text-slate-500">
+                        Create a coin in the My Coin tab to enable rewards for this TikTok account.
+                      </p>
+                    ) : (
+                      <Select
+                        value={selectedTikTokAccountMeta.page?.reward_coin_symbol ?? undefined}
+                        onValueChange={handleTikTokRewardCoinChange}
+                        disabled={isUpdatingTikTokRewardCoin}
+                      >
+                        <SelectTrigger className="w-full md:w-56 bg-white text-black hover:bg-white/80">
+                          <SelectValue placeholder="Select coin" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white text-black hover:bg-gray-100">
+                          {tiktokRewardCoinOptions.map((symbol) => (
+                            <SelectItem key={symbol} value={symbol} className="bg-white text-black">
+                              {symbol}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <p className="text-xs text-slate-500">
+                      Choose which coin funds fan rewards earned on TikTok engagement.
+                    </p>
+                  </div>
+                </Card>
+              )}
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-slate-500">Interaction Type</p>
+                  <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All types</SelectItem>
+                      <SelectItem value="like">Likes</SelectItem>
+                      <SelectItem value="comment">Comments</SelectItem>
+                      <SelectItem value="share">Shares</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-slate-500">Fan Name</p>
+                  <Input
+                    placeholder="Search by fan name"
+                    value={filterSearch}
+                    onChange={(event: InputChangeEvent) => setFilterSearch(event.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-slate-500">Post Date</p>
+                  <Select value={filterDate} onValueChange={(value: string) => setFilterDate(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Any date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any date</SelectItem>
+                      <SelectItem value="7d">Last 7 days</SelectItem>
+                      <SelectItem value="30d">Last 30 days</SelectItem>
+                      <SelectItem value="90d">Last 90 days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {isTikTokLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <Card key={index} className="p-4 border-sky-100">
+                      <div className="flex gap-4">
+                        <Skeleton className="h-20 w-20 rounded-lg" />
+                        <div className="flex-1 space-y-3">
+                          <Skeleton className="h-4 w-1/3" />
+                          <Skeleton className="h-3 w-2/3" />
+                          <Skeleton className="h-3 w-full" />
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : tiktokPosts.length === 0 ? (
+                <Card className="p-8 border-dashed border-sky-200 text-center bg-white">
+                  <Music2 className="w-10 h-10 mx-auto text-sky-400 mb-4" />
+                  <h3 className="text-slate-900 font-semibold mb-2">No TikTok videos synced yet</h3>
+                  <p className="text-slate-500 mb-4">
+                    Sync your TikTok account to start tracking engagement automatically.
+                  </p>
+                  <Button
+                    className="bg-sky-500 text-white hover:bg-sky-600"
+                    disabled={isTikTokSyncing}
+                    onClick={() => syncTikTok(true, undefined, effectiveTikTokAccountId)}
+                  >
+                    {isTikTokSyncing ? 'Syncing…' : 'Sync TikTok'}
+                  </Button>
+                </Card>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {tiktokFilteredPosts.map((post: SocialPost) => renderPostCard(post))}
                 </div>
               )}
             </>

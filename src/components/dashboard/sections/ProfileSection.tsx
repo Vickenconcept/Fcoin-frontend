@@ -3,10 +3,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { AlertTriangle, CheckCircle, Facebook, Info, Instagram, Loader2, Youtube } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Facebook, Info, Instagram, Loader2, Music2, Youtube } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSocialAccounts } from '../hooks/useSocialAccounts';
 import { FacebookPagesManager } from './FacebookPagesManager';
+import { TikTokAccountsManager } from './TikTokAccountsManager';
 import { InstagramAccountsManager } from './InstagramAccountsManager';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/apiClient';
@@ -18,7 +19,7 @@ type ProviderCard = {
   icon: any;
   color: string;
   connectLabel: string;
-  variant: 'facebook' | 'instagram' | 'coming-soon';
+  variant: 'facebook' | 'instagram' | 'tiktok' | 'coming-soon';
   description?: string;
 };
 
@@ -57,10 +58,12 @@ const SOCIAL_PROVIDER_CARDS: ProviderCard[] = [
     key: 'tiktok',
     provider: 'tiktok',
     platform: 'TikTok',
-    icon: null,
-    color: 'bg-slate-100 text-slate-600',
-    connectLabel: 'Coming Soon',
-    variant: 'coming-soon',
+    icon: Music2,
+    color: 'bg-sky-100 text-sky-600',
+    connectLabel: 'Connect TikTok',
+    variant: 'tiktok',
+    description:
+      'Connect your TikTok creator account to capture videos and engagement. Fans can link their profile so we can reward their activity.',
   },
 ];
 
@@ -71,6 +74,8 @@ export function ProfileSection() {
   const {
     accountsMap,
     instagramAccounts,
+    tiktokCreatorAccounts,
+    tiktokFanAccounts,
     isLoading,
     isConnecting,
     pendingRecovery,
@@ -80,10 +85,13 @@ export function ProfileSection() {
     connectFacebookProfile,
     connectFacebookPages,
     connectInstagram,
+    connectTikTokCreator,
+    connectTikTokFan,
     disconnect,
   } = useSocialAccounts();
   const [isFacebookManagerOpen, setIsFacebookManagerOpen] = useState(false);
   const [isInstagramManagerOpen, setIsInstagramManagerOpen] = useState(false);
+  const [isTikTokManagerOpen, setIsTikTokManagerOpen] = useState(false);
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
   const [username, setUsername] = useState(user?.username ?? '');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -335,8 +343,19 @@ export function ProfileSection() {
             const Icon = provider.icon;
             const isFacebook = provider.variant === 'facebook';
             const isInstagram = provider.variant === 'instagram';
-            const account = isInstagram ? instagramAccounts[0] : accountsMap[provider.provider];
-            const isConnected = isInstagram ? instagramAccounts.length > 0 : Boolean(account);
+            const isTikTok = provider.variant === 'tiktok';
+            const primaryAccount = isInstagram
+              ? instagramAccounts[0]
+              : isTikTok
+              ? tiktokCreatorAccounts[0] ?? tiktokFanAccounts[0]
+              : accountsMap[provider.provider];
+            const tiktokCreatorCount = tiktokCreatorAccounts.length;
+            const tiktokFanCount = tiktokFanAccounts.length;
+            const isConnected = isInstagram
+              ? instagramAccounts.length > 0
+              : isTikTok
+              ? tiktokCreatorCount > 0 || tiktokFanCount > 0
+              : Boolean(primaryAccount);
 
             const handleDisconnectInstagram = () => {
               if (instagramAccounts.length === 0) {
@@ -372,7 +391,11 @@ export function ProfileSection() {
                         <p className="text-slate-500">
                           {isInstagram
                             ? `${instagramAccounts.length} account${instagramAccounts.length === 1 ? '' : 's'} connected`
-                            : account.provider_username ?? account.provider_user_id ?? 'Connected'}
+                            : isTikTok
+                            ? `${tiktokCreatorCount} creator${tiktokCreatorCount === 1 ? '' : 's'} · ${tiktokFanCount} fan${tiktokFanCount === 1 ? '' : 's'}`
+                            : primaryAccount?.provider_username ??
+                              primaryAccount?.provider_user_id ??
+                              'Connected'}
                         </p>
                       ) : (
                         <p className="text-slate-500">Not connected</p>
@@ -436,6 +459,35 @@ export function ProfileSection() {
                             Disconnect
                           </Button>
                         </div>
+                      ) : isTikTok ? (
+                        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="bg-sky-500 text-white hover:bg-sky-600"
+                            onClick={() => setIsTikTokManagerOpen(true)}
+                          >
+                            Manage Creators
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isLoading || isConnecting}
+                            className="border-sky-200 text-sky-600 hover:bg-sky-50"
+                            onClick={() => connectTikTokCreator().catch(() => {})}
+                          >
+                            {isConnecting ? 'Connecting…' : 'Connect Creator'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isLoading || isConnecting}
+                            className="border-sky-200 text-sky-600 hover:bg-sky-50"
+                            onClick={() => connectTikTokFan().catch(() => {})}
+                          >
+                            {isConnecting ? 'Connecting…' : 'Connect Fan'}
+                          </Button>
+                        </div>
                       ) : (
                         <Button
                           variant="outline"
@@ -479,6 +531,31 @@ export function ProfileSection() {
                     >
                       {isConnecting ? 'Connecting…' : provider.connectLabel}
                     </Button>
+                  ) : isTikTok ? (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button
+                          size="sm"
+                          className="bg-sky-500 text-white hover:bg-sky-600"
+                          disabled={isLoading || isConnecting}
+                          onClick={() => connectTikTokCreator().catch(() => {})}
+                        >
+                          {isConnecting ? 'Connecting…' : 'Connect Creator'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-sky-200 text-sky-600 hover:bg-sky-50"
+                          disabled={isLoading || isConnecting}
+                          onClick={() => connectTikTokFan().catch(() => {})}
+                        >
+                          {isConnecting ? 'Connecting…' : 'Connect as Fan'}
+                        </Button>
+                      </div>
+                      {provider.description && (
+                        <p className="text-xs text-slate-500">{provider.description}</p>
+                      )}
+                    </div>
                   ) : (
                     <Badge className="bg-slate-200 text-slate-500 border-slate-300">Coming Soon</Badge>
                   )}
@@ -511,6 +588,60 @@ export function ProfileSection() {
                     )}
                   </div>
                 )}
+                {isTikTok && isConnected && (
+                  <div className="mt-3 space-y-3 text-sm text-slate-600">
+                    {tiktokCreatorCount > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase text-slate-500">
+                          Creator Accounts
+                        </p>
+                        {tiktokCreatorAccounts.slice(0, 2).map((entry) => (
+                          <div key={entry.id} className="flex items-center justify-between gap-2">
+                            <span className="truncate">
+                              {entry.provider_username
+                                ? `${entry.provider_username.startsWith('@') ? '' : '@'}${entry.provider_username}`
+                                : entry.provider_user_id}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              Connected {entry.connected_at ? new Date(entry.connected_at).toLocaleString() : '—'}
+                            </span>
+                          </div>
+                        ))}
+                        {tiktokCreatorCount > 2 && (
+                          <button
+                            type="button"
+                            className="text-xs text-sky-600 hover:underline"
+                            onClick={() => setIsTikTokManagerOpen(true)}
+                          >
+                            View all {tiktokCreatorCount} creator accounts
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {tiktokFanCount > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase text-slate-500">Fan Profiles</p>
+                        {tiktokFanAccounts.map((entry) => (
+                          <div key={entry.id} className="flex items-center justify-between gap-2">
+                            <span className="truncate">
+                              {entry.provider_username
+                                ? `${entry.provider_username.startsWith('@') ? '' : '@'}${entry.provider_username}`
+                                : entry.provider_user_id}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:bg-red-50"
+                              onClick={() => disconnect('tiktok_fan', entry.id).catch(() => {})}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </Card>
             );
           })}
@@ -527,6 +658,14 @@ export function ProfileSection() {
         isConnecting={isConnecting}
         onConnect={() => connectInstagram().catch(() => {})}
         onDisconnect={(accountId) => disconnect('instagram', accountId).catch(() => {})}
+      />
+      <TikTokAccountsManager
+        open={isTikTokManagerOpen}
+        onOpenChange={setIsTikTokManagerOpen}
+        accounts={tiktokCreatorAccounts}
+        isConnecting={isConnecting}
+        onConnect={() => connectTikTokCreator().catch(() => {})}
+        onDisconnect={(accountId) => disconnect('tiktok', accountId).catch(() => {})}
       />
     </div>
   );
