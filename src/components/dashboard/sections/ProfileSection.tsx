@@ -41,7 +41,7 @@ const SOCIAL_PROVIDER_CARDS: ProviderCard[] = [
     color: 'bg-pink-100 text-pink-600',
     connectLabel: 'Connect Instagram',
     variant: 'instagram',
-    description: 'Connect a professional account to sync posts, or a fan profile so we can recognise your engagement.',
+    description: 'Connect your creator or business account to sync posts and engagement metrics.',
   },
   {
     key: 'youtube',
@@ -77,8 +77,7 @@ export function ProfileSection() {
     dismissRecovery,
     connectFacebookProfile,
     connectFacebookPages,
-    connectInstagramBusiness,
-    connectInstagramPersonal,
+    connectInstagram,
     disconnect,
   } = useSocialAccounts();
   const [isFacebookManagerOpen, setIsFacebookManagerOpen] = useState(false);
@@ -333,113 +332,6 @@ export function ProfileSection() {
             const Icon = provider.icon;
             const isFacebook = provider.variant === 'facebook';
             const isInstagram = provider.variant === 'instagram';
-
-            if (isInstagram) {
-              const instagramBusinessAccount = accountsMap['instagram'];
-              const instagramPersonalAccount = accountsMap['instagram_personal'];
-              const isBusinessConnected = Boolean(instagramBusinessAccount);
-              const isPersonalConnected = Boolean(instagramPersonalAccount);
-              const actionButtons = [];
-
-              actionButtons.push(
-                <Button
-                  key="connect-professional"
-                  size="sm"
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                  disabled={isLoading || isConnecting}
-                  onClick={() => connectInstagramBusiness().catch(() => {})}
-                >
-                  {isBusinessConnected ? 'Reconnect Professional' : 'Connect Professional'}
-                </Button>,
-              );
-
-              if (isBusinessConnected) {
-                actionButtons.push(
-                  <Button
-                    key="disconnect-professional"
-                    size="sm"
-                    variant="outline"
-                    disabled={isLoading || isConnecting}
-                    onClick={() => disconnect('instagram').catch(() => {})}
-                  >
-                    Disconnect Professional
-                  </Button>,
-                );
-              }
-
-              actionButtons.push(
-                <Button
-                  key="connect-fan"
-                  size="sm"
-                  variant="outline"
-                  className="border-pink-200 text-pink-600 hover:bg-pink-50"
-                  disabled={isLoading || isConnecting}
-                  onClick={() => connectInstagramPersonal().catch(() => {})}
-                >
-                  {isPersonalConnected ? 'Reconnect Fan Profile' : 'Connect Fan Profile'}
-                </Button>,
-              );
-
-              if (isPersonalConnected) {
-                actionButtons.push(
-                  <Button
-                    key="disconnect-fan"
-                    size="sm"
-                    variant="outline"
-                    className="border-slate-200 text-slate-600 hover:bg-slate-50"
-                    disabled={isLoading || isConnecting}
-                    onClick={() => disconnect('instagram_personal').catch(() => {})}
-                  >
-                    Disconnect Fan Profile
-                  </Button>,
-                );
-              }
-
-              return (
-                <Card key={provider.key} className="p-4 border-purple-100">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 ${provider.color} rounded-xl flex items-center justify-center`}>
-                        {Icon ? (
-                          <Icon className="w-6 h-6" />
-                        ) : (
-                          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
-                          </svg>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-slate-900">{provider.platform}</p>
-                        <div className="text-xs text-slate-500 space-y-1 mt-1">
-                          <p>
-                            <span className="font-semibold text-slate-600">Professional:&nbsp;</span>
-                            {isBusinessConnected
-                              ? instagramBusinessAccount?.provider_username ?? instagramBusinessAccount?.provider_user_id
-                              : 'Not connected'}
-                          </p>
-                          <p>
-                            <span className="font-semibold text-slate-600">Fan Profile:&nbsp;</span>
-                            {isPersonalConnected
-                              ? instagramPersonalAccount?.provider_username ?? instagramPersonalAccount?.provider_user_id
-                              : 'Not connected'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 sm:gap-3">
-                      {(isBusinessConnected || isPersonalConnected) && (
-                        <Badge className="bg-green-100 text-green-700 border-green-200 w-fit">Connected</Badge>
-                      )}
-                      <div className="flex flex-wrap justify-end gap-2">{actionButtons}</div>
-                      {provider.description && (
-                        <p className="text-xs text-slate-500 text-right">{provider.description}</p>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              );
-            }
-
             const account = accountsMap[provider.provider];
             const isConnected = Boolean(account);
 
@@ -521,6 +413,15 @@ export function ProfileSection() {
                         <p className="text-xs text-slate-500">{provider.description}</p>
                       )}
                     </div>
+                  ) : isInstagram ? (
+                    <Button
+                      size="sm"
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      disabled={isLoading || isConnecting}
+                      onClick={() => connectInstagram().catch(() => {})}
+                    >
+                      {isConnecting ? 'Connecting…' : provider.connectLabel}
+                    </Button>
                   ) : (
                     <Badge className="bg-slate-200 text-slate-500 border-slate-300">Coming Soon</Badge>
                   )}

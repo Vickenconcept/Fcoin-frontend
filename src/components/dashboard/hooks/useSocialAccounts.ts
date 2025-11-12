@@ -6,7 +6,7 @@ type PendingRecovery = {
   token: string;
   providerUserId: string;
   providerUsername?: string | null;
-  mode: 'profile' | 'pages' | 'business' | 'personal';
+  mode: 'profile' | 'pages';
 };
 
 export type SocialAccount = {
@@ -23,8 +23,7 @@ const API_ORIGIN = new URL(API_BASE_URL).origin;
 type ConnectableProvider = 'facebook' | 'instagram';
 
 type ConnectOptions = {
-  mode?: 'profile' | 'pages' | 'business' | 'personal';
-  label?: string;
+  mode?: 'profile' | 'pages';
 };
 
 const providerLabels: Record<ConnectableProvider, string> = {
@@ -84,7 +83,7 @@ export function useSocialAccounts() {
         return;
       }
 
-      const providerLabel = options.label ?? providerLabels[provider];
+      const providerLabel = providerLabels[provider];
 
       try {
         popup.document.write(
@@ -301,13 +300,9 @@ export function useSocialAccounts() {
     isRecovering,
     recoverFacebookProfile,
     dismissRecovery,
-    connectFacebookProfile: () => connect('facebook', { mode: 'profile', label: 'Facebook Profile' }),
-    connectFacebookPages: () =>
-      connect('facebook', { mode: 'pages', label: 'Facebook with Pages' }),
-    connectInstagramBusiness: () =>
-      connect('instagram', { mode: 'business', label: 'Instagram Professional' }),
-    connectInstagramPersonal: () =>
-      connect('instagram', { mode: 'personal', label: 'Instagram Fan Profile' }),
+    connectFacebookProfile: () => connect('facebook', { mode: 'profile' }),
+    connectFacebookPages: () => connect('facebook', { mode: 'pages' }),
+    connectInstagram: () => connect('instagram'),
     disconnect,
     reload: load,
   };
