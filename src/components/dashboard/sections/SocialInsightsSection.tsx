@@ -344,12 +344,12 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                   onValueChange={handleRewardCoinChange}
                   disabled={isUpdatingRewardCoin}
                 >
-                  <SelectTrigger className="w-full md:w-56">
+                  <SelectTrigger className="w-full md:w-56 bg-white text-black hover:bg-white/80">
                     <SelectValue placeholder="Select coin" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white text-black hover:bg-gray-100">
                     {rewardCoinOptions.map((symbol) => (
-                      <SelectItem key={symbol} value={symbol}>
+                      <SelectItem key={symbol} value={symbol} className="bg-white text-black">
                         {symbol}
                       </SelectItem>
                     ))}

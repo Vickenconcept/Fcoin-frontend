@@ -1,12 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Facebook, Instagram, Youtube } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Facebook, Info, Instagram, Loader2, Youtube } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSocialAccounts } from '../hooks/useSocialAccounts';
 import { FacebookPagesManager } from './FacebookPagesManager';
+import toast from 'react-hot-toast';
+import { apiClient } from '@/lib/apiClient';
 
 const SOCIAL_PROVIDERS = [
   {
@@ -39,8 +41,10 @@ const SOCIAL_PROVIDERS = [
   },
 ];
 
+type TextChangeEvent = { target: { value: string } };
+
 export function ProfileSection() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const {
     accountsMap,
     isLoading,
@@ -55,6 +59,142 @@ export function ProfileSection() {
     disconnect,
   } = useSocialAccounts();
   const [isFacebookManagerOpen, setIsFacebookManagerOpen] = useState(false);
+  const [displayName, setDisplayName] = useState(user?.display_name ?? '');
+  const [username, setUsername] = useState(user?.username ?? '');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'self' | 'unavailable' | 'error'>('idle');
+  const [usernameStatusMessage, setUsernameStatusMessage] = useState<string>('');
+
+  useEffect(() => {
+    setDisplayName(user?.display_name ?? '');
+    setUsername(user?.username ?? '');
+    setUsernameStatus('idle');
+    setUsernameStatusMessage('');
+  }, [user?.display_name, user?.username]);
+
+  const originalDisplayName = user?.display_name ?? '';
+  const originalUsername = user?.username ?? '';
+  const trimmedDisplayName = displayName.trim();
+  const trimmedUsername = username.trim();
+  const hasProfileChanges =
+    trimmedDisplayName !== originalDisplayName || trimmedUsername !== originalUsername;
+
+  useEffect(() => {
+    const next = trimmedUsername;
+
+    if (!next) {
+      setUsernameStatus('unavailable');
+      setUsernameStatusMessage('Username is required.');
+      return;
+    }
+
+    if (next === originalUsername) {
+      setUsernameStatus('idle');
+      setUsernameStatusMessage('');
+      return;
+    }
+
+    setUsernameStatus('checking');
+    setUsernameStatusMessage('');
+
+    const currentUsername = next;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await apiClient.request<{ id: string; username: string }>(
+          `/v1/users/lookup?username=${encodeURIComponent(currentUsername)}`,
+        );
+
+        if (trimmedUsername !== currentUsername) {
+          return;
+        }
+
+        if (response.ok && response.data) {
+          if (response.data.id === user?.id) {
+            setUsernameStatus('self');
+            setUsernameStatusMessage('This is already your username.');
+          } else {
+            setUsernameStatus('unavailable');
+            setUsernameStatusMessage('That username is already taken.');
+          }
+        } else if (response.status === 404) {
+          setUsernameStatus('available');
+          setUsernameStatusMessage('Great — that username is available.');
+        } else {
+          setUsernameStatus('error');
+          setUsernameStatusMessage(response.errors?.[0]?.detail ?? 'Unable to verify username.');
+        }
+      } catch (error) {
+        console.error('[ProfileSection] username lookup error', error);
+        if (trimmedUsername !== currentUsername) {
+          return;
+        }
+
+        setUsernameStatus('error');
+        setUsernameStatusMessage('Unable to verify username right now.');
+      }
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [trimmedUsername, originalUsername, user?.id]);
+
+  const handleSaveProfile = async () => {
+    if (!hasProfileChanges) {
+      toast('Nothing to update.', { icon: 'ℹ️' });
+      return;
+    }
+
+    if (!trimmedUsername) {
+      toast.error('Username is required.');
+      return;
+    }
+
+    if (
+      trimmedUsername !== originalUsername &&
+      (usernameStatus === 'checking' || usernameStatus === 'unavailable' || usernameStatus === 'error')
+    ) {
+      const message =
+        usernameStatus === 'checking'
+          ? 'Please wait while we verify your username.'
+          : usernameStatusMessage || 'Choose a different username and try again.';
+      toast.error(message);
+      return;
+    }
+
+    setIsSavingProfile(true);
+
+    try {
+    const payload: Record<string, string | null> = {};
+
+      if (trimmedDisplayName !== originalDisplayName) {
+        payload.display_name = trimmedDisplayName || null;
+      }
+
+      if (trimmedUsername !== originalUsername) {
+        payload.username = trimmedUsername;
+      }
+
+      const response = await apiClient.request('/v1/profile', {
+        method: 'PATCH',
+        body: payload as any,
+      });
+
+      if (!response.ok) {
+        const detail = response.errors?.[0]?.detail ?? 'Unable to update profile.';
+        toast.error(detail);
+        return;
+      }
+
+      await refreshUser();
+      toast.success('Profile updated successfully.');
+      setUsernameStatus('idle');
+      setUsernameStatusMessage('');
+    } catch (error) {
+      console.error('[ProfileSection] update profile failed', error);
+      toast.error('We could not update your profile right now. Please try again.');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   const providers = useMemo(() => SOCIAL_PROVIDERS, []);
 
@@ -97,16 +237,65 @@ export function ProfileSection() {
           <div className="flex-1 space-y-4">
             <div>
               <p className="text-slate-600 mb-1">Name</p>
-              <Input defaultValue={user?.display_name ?? ''} />
+              <Input
+                value={displayName}
+                onChange={(event: TextChangeEvent) => setDisplayName(event.target.value)}
+                placeholder="Display name"
+                maxLength={120}
+                disabled={isSavingProfile}
+              />
             </div>
             <div>
               <p className="text-slate-600 mb-1">Username</p>
-              <Input defaultValue={user?.username ?? ''} />
+              <Input
+                value={username}
+                onChange={(event: TextChangeEvent) => setUsername(event.target.value)}
+                placeholder="username"
+                maxLength={50}
+                disabled={isSavingProfile}
+              />
+              <div className="min-h-[1.5rem] mt-1 text-xs text-slate-500 flex items-center gap-2">
+                {usernameStatus === 'idle' && <span>Choose a unique username for your profile.</span>}
+                {usernameStatus === 'checking' && (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin text-purple-500" />
+                    <span className="text-purple-600">Checking availability…</span>
+                  </>
+                )}
+                {usernameStatus === 'available' && (
+                  <>
+                    <CheckCircle className="w-3 h-3 text-green-600" />
+                    <span className="text-green-600">{usernameStatusMessage}</span>
+                  </>
+                )}
+                {usernameStatus === 'self' && (
+                  <>
+                    <Info className="w-3 h-3 text-slate-500" />
+                    <span className="text-slate-500">{usernameStatusMessage}</span>
+                  </>
+                )}
+                {(usernameStatus === 'unavailable' || usernameStatus === 'error') && (
+                  <>
+                    <AlertTriangle className="w-3 h-3 text-amber-600" />
+                    <span className="text-amber-600">{usernameStatusMessage}</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
-        <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-          Save Changes
+        <Button
+          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+          onClick={handleSaveProfile}
+          disabled={
+            isSavingProfile ||
+            !hasProfileChanges ||
+            !trimmedUsername ||
+            (trimmedUsername !== originalUsername &&
+              (usernameStatus === 'checking' || usernameStatus === 'unavailable' || usernameStatus === 'error'))
+          }
+        >
+          {isSavingProfile ? 'Saving…' : 'Save Changes'}
         </Button>
       </Card>
 
