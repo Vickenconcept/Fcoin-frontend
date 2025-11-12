@@ -10,6 +10,7 @@ type PendingRecovery = {
 };
 
 export type SocialAccount = {
+  id: string;
   provider: string;
   provider_user_id: string | null;
   provider_username: string | null;
@@ -263,9 +264,15 @@ export function useSocialAccounts() {
   }, []);
 
   const disconnect = useCallback(
-    async (provider: string) => {
+    async (provider: string, providerAccountId?: string) => {
       try {
-        const response = await apiClient.request(`/v1/oauth/${provider}`, {
+        let endpoint = `/v1/oauth/${provider}`;
+
+        if (providerAccountId) {
+          endpoint = `${endpoint}?account_id=${encodeURIComponent(providerAccountId)}`;
+        }
+
+        const response = await apiClient.request(endpoint, {
           method: 'DELETE',
         });
 
@@ -291,9 +298,14 @@ export function useSocialAccounts() {
     }, {});
   }, [accounts]);
 
+  const instagramAccounts = useMemo(() => {
+    return accounts.filter((account) => account.provider === 'instagram');
+  }, [accounts]);
+
   return {
     accounts,
     accountsMap,
+    instagramAccounts,
     isLoading,
     isConnecting,
     pendingRecovery,

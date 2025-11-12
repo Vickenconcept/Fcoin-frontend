@@ -7,6 +7,7 @@ import { AlertTriangle, CheckCircle, Facebook, Info, Instagram, Loader2, Youtube
 import { useAuth } from '@/context/AuthContext';
 import { useSocialAccounts } from '../hooks/useSocialAccounts';
 import { FacebookPagesManager } from './FacebookPagesManager';
+import { InstagramAccountsManager } from './InstagramAccountsManager';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/apiClient';
 
@@ -69,6 +70,7 @@ export function ProfileSection() {
   const { user, refreshUser } = useAuth();
   const {
     accountsMap,
+    instagramAccounts,
     isLoading,
     isConnecting,
     pendingRecovery,
@@ -81,6 +83,7 @@ export function ProfileSection() {
     disconnect,
   } = useSocialAccounts();
   const [isFacebookManagerOpen, setIsFacebookManagerOpen] = useState(false);
+  const [isInstagramManagerOpen, setIsInstagramManagerOpen] = useState(false);
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
   const [username, setUsername] = useState(user?.username ?? '');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -332,8 +335,23 @@ export function ProfileSection() {
             const Icon = provider.icon;
             const isFacebook = provider.variant === 'facebook';
             const isInstagram = provider.variant === 'instagram';
-            const account = accountsMap[provider.provider];
-            const isConnected = Boolean(account);
+            const account = isInstagram ? instagramAccounts[0] : accountsMap[provider.provider];
+            const isConnected = isInstagram ? instagramAccounts.length > 0 : Boolean(account);
+
+            const handleDisconnectInstagram = () => {
+              if (instagramAccounts.length === 0) {
+                return;
+              }
+
+              if (instagramAccounts.length === 1) {
+                const targetAccount = instagramAccounts[0];
+                disconnect('instagram', targetAccount.id).catch(() => {});
+                return;
+              }
+
+              toast('Select which Instagram account to disconnect.', { icon: 'ℹ️' });
+              setIsInstagramManagerOpen(true);
+            };
 
             return (
               <Card key={provider.key} className="p-4 border-purple-100">
@@ -352,7 +370,9 @@ export function ProfileSection() {
                       <p className="text-slate-900">{provider.platform}</p>
                       {isConnected ? (
                         <p className="text-slate-500">
-                          {account.provider_username ?? account.provider_user_id ?? 'Connected'}
+                          {isInstagram
+                            ? `${instagramAccounts.length} account${instagramAccounts.length === 1 ? '' : 's'} connected`
+                            : account.provider_username ?? account.provider_user_id ?? 'Connected'}
                         </p>
                       ) : (
                         <p className="text-slate-500">Not connected</p>
@@ -362,7 +382,34 @@ export function ProfileSection() {
                   {isConnected ? (
                     <div className="flex items-center gap-3">
                       <Badge className="bg-green-100 text-green-700 border-green-200">Connected</Badge>
-                      {isFacebook && (
+                      {isInstagram ? (
+                        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setIsInstagramManagerOpen(true)}
+                          >
+                            Manage Accounts
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isLoading || isConnecting}
+                            onClick={() => connectInstagram().catch(() => {})}
+                          >
+                            {isConnecting ? 'Connecting…' : 'Connect Another'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            disabled={isLoading || isConnecting}
+                            onClick={handleDisconnectInstagram}
+                          >
+                            Disconnect
+                          </Button>
+                        </div>
+                      ) : isFacebook ? (
                         <div className="flex items-center gap-2">
                           <Button
                             variant="secondary"
@@ -379,15 +426,25 @@ export function ProfileSection() {
                           >
                             {isConnecting ? 'Reconnecting…' : 'Grant Page Access'}
                           </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            disabled={isLoading || isConnecting}
+                            onClick={() => disconnect('facebook').catch(() => {})}
+                          >
+                            Disconnect
+                          </Button>
                         </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => disconnect(provider.provider).catch(() => {})}
+                        >
+                          Disconnect
+                        </Button>
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => disconnect(provider.provider).catch(() => {})}
-                      >
-                        Disconnect
-                      </Button>
                     </div>
                   ) : isFacebook ? (
                     <div className="flex flex-col gap-3">
@@ -429,6 +486,31 @@ export function ProfileSection() {
                 {!isConnected && provider.description && !isFacebook && (
                   <p className="text-xs text-slate-500 mt-3">{provider.description}</p>
                 )}
+                {isInstagram && isConnected && instagramAccounts.length > 0 && (
+                  <div className="mt-3 space-y-2 text-sm text-slate-600">
+                    {instagramAccounts.slice(0, 2).map((entry) => (
+                      <div key={entry.id} className="flex items-center justify-between gap-2">
+                        <span className="truncate">
+                          {entry.provider_username
+                            ? `${entry.provider_username.startsWith('@') ? '' : '@'}${entry.provider_username}`
+                            : entry.provider_user_id}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          Connected {entry.connected_at ? new Date(entry.connected_at).toLocaleString() : '—'}
+                        </span>
+                      </div>
+                    ))}
+                    {instagramAccounts.length > 2 && (
+                      <button
+                        type="button"
+                        className="text-xs text-purple-600 hover:underline"
+                        onClick={() => setIsInstagramManagerOpen(true)}
+                      >
+                        View all {instagramAccounts.length} accounts
+                      </button>
+                    )}
+                  </div>
+                )}
               </Card>
             );
           })}
@@ -437,6 +519,14 @@ export function ProfileSection() {
       <FacebookPagesManager
         open={isFacebookManagerOpen}
         onOpenChange={setIsFacebookManagerOpen}
+      />
+      <InstagramAccountsManager
+        open={isInstagramManagerOpen}
+        onOpenChange={setIsInstagramManagerOpen}
+        accounts={instagramAccounts}
+        isConnecting={isConnecting}
+        onConnect={() => connectInstagram().catch(() => {})}
+        onDisconnect={(accountId) => disconnect('instagram', accountId).catch(() => {})}
       />
     </div>
   );

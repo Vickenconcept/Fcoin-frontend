@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,9 +12,11 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RefreshCcw, TrendingUp, Users } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Instagram, RefreshCcw, TrendingUp, Users } from 'lucide-react';
 import { useFacebookPages, ConnectedFacebookPage } from '../hooks/useFacebookPages';
 import { useFacebookPagePosts, SocialPost } from '../hooks/useFacebookPagePosts';
+import { useInstagramPosts } from '../hooks/useInstagramPosts';
 import type { CreatorCoin } from '../hooks/useCoins';
 
 type NormalizedEngagedUser = {
@@ -79,12 +81,27 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     sync: syncPage,
   } = useFacebookPagePosts();
 
+  const {
+    posts: instagramPosts,
+    accounts: instagramAccounts,
+    account: instagramAccount,
+    selectedAccountId: selectedInstagramAccountId,
+    isLoading: isInstagramLoading,
+    isSyncing: isInstagramSyncing,
+    isUpdatingRewardCoin: isUpdatingInstagramRewardCoin,
+    load: loadInstagramPosts,
+    sync: syncInstagram,
+    updateRewardCoin: updateInstagramRewardCoin,
+    selectAccount: selectInstagramAccount,
+  } = useInstagramPosts();
+
   const [activePageId, setActivePageId] = useState(null as string | null);
   const [engagementModalPost, setEngagementModalPost] = useState<SocialPost | null>(null);
   const [engagementModalOpen, setEngagementModalOpen] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
   const [filterSearch, setFilterSearch] = useState('');
   const [filterDate, setFilterDate] = useState<string>('all');
+  const [activeSocialTab, setActiveSocialTab] = useState<'facebook' | 'instagram'>('facebook');
 
   useEffect(() => {
     loadPages().catch((error: unknown) => console.error('[SocialInsightsSection] loadPages', error));
@@ -107,6 +124,20 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     }
   }, [pages, activePageId, loadPosts]);
 
+  useEffect(() => {
+    loadInstagramPosts().catch((error: unknown) =>
+      console.error('[SocialInsightsSection] loadInstagramPosts', error),
+    );
+  }, [loadInstagramPosts]);
+
+  useEffect(() => {
+    if (activeSocialTab === 'facebook' && pages.length === 0 && instagramAccounts.length > 0) {
+      setActiveSocialTab('instagram');
+    } else if (activeSocialTab === 'instagram' && instagramAccounts.length === 0 && pages.length > 0) {
+      setActiveSocialTab('facebook');
+    }
+  }, [activeSocialTab, pages.length, instagramAccounts.length]);
+
   const selectedPage = useMemo(() => {
     const targetId = activePageId ?? selectedPageId ?? '';
     if (!targetId) {
@@ -127,48 +158,71 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     syncPage(id, true).catch((error: unknown) => console.error('[SocialInsightsSection] syncPage', error));
   };
 
-  const filteredPosts = useMemo(() => {
-    const filterTypeUpper = filterType.toUpperCase();
+  const applyFilters = useCallback(
+    (source: SocialPost[]) => {
+      const filterTypeUpper = filterType.toUpperCase();
 
-    return posts.filter((post) => {
-      const engagedUsers = normalizeEngagedUsers(post);
+      return source.filter((post) => {
+        const engagedUsers = normalizeEngagedUsers(post);
 
-      const interactionsMatch =
-        filterType === 'all' ||
-        engagedUsers.some((user) =>
-          user.interactions?.some((interaction) => interaction.type === filterTypeUpper),
-        );
+        const interactionsMatch =
+          filterType === 'all' ||
+          engagedUsers.some((user) =>
+            user.interactions?.some((interaction) => interaction.type === filterTypeUpper),
+          );
 
-      const searchMatch = filterSearch
-        ? engagedUsers.some((user) =>
-            (user.name || '').toLowerCase().includes(filterSearch.trim().toLowerCase()),
-          )
-        : true;
+        const searchMatch = filterSearch
+          ? engagedUsers.some((user) =>
+              (user.name || '').toLowerCase().includes(filterSearch.trim().toLowerCase()),
+            )
+          : true;
 
-      const dateMatch = (() => {
-        if (filterDate === 'all' || !post.published_at) {
-          return true;
-        }
-
-        const published = new Date(post.published_at).getTime();
-        const now = Date.now();
-        const day = 24 * 60 * 60 * 1000;
-
-        switch (filterDate) {
-          case '7d':
-            return now - published <= 7 * day;
-          case '30d':
-            return now - published <= 30 * day;
-          case '90d':
-            return now - published <= 90 * day;
-          default:
+        const dateMatch = (() => {
+          if (filterDate === 'all' || !post.published_at) {
             return true;
-        }
-      })();
+          }
 
-      return interactionsMatch && searchMatch && dateMatch;
-    });
-  }, [posts, filterType, filterSearch, filterDate]);
+          const published = new Date(post.published_at).getTime();
+          const now = Date.now();
+          const day = 24 * 60 * 60 * 1000;
+
+          switch (filterDate) {
+            case '7d':
+              return now - published <= 7 * day;
+            case '30d':
+              return now - published <= 30 * day;
+            case '90d':
+              return now - published <= 90 * day;
+            default:
+              return true;
+          }
+        })();
+
+        return interactionsMatch && searchMatch && dateMatch;
+      });
+    },
+    [filterType, filterSearch, filterDate],
+  );
+
+  const filteredPosts = useMemo(() => applyFilters(posts), [applyFilters, posts]);
+  const instagramFilteredPosts = useMemo(
+    () => applyFilters(instagramPosts),
+    [applyFilters, instagramPosts],
+  );
+
+  const effectiveInstagramAccountId = useMemo(() => {
+    return selectedInstagramAccountId ?? instagramAccounts[0]?.id ?? null;
+  }, [selectedInstagramAccountId, instagramAccounts]);
+
+  const selectedInstagramAccountMeta = useMemo(() => {
+    if (effectiveInstagramAccountId) {
+      const match = instagramAccounts.find((item) => item.id === effectiveInstagramAccountId);
+      if (match) {
+        return match;
+      }
+    }
+    return instagramAccount;
+  }, [effectiveInstagramAccountId, instagramAccounts, instagramAccount]);
 
   const openEngagementModal = (post: SocialPost) => {
     setEngagementModalPost(post);
@@ -191,6 +245,9 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
       })),
     );
 
+    const providerLabel =
+      engagementModalPost.provider === 'instagram' ? 'Instagram' : 'Facebook';
+
     return (
       <Dialog open={engagementModalOpen} onOpenChange={setEngagementModalOpen}>
         <DialogContent className="max-w-2xl">
@@ -204,7 +261,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                   rel="noopener noreferrer"
                   className="text-purple-600 hover:underline"
                 >
-                  View post on Facebook
+                  View post on {providerLabel}
                 </a>
               ) : (
                 <span className="text-sm text-muted-foreground">No permalink available</span>
@@ -232,12 +289,17 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                       {item.type}
                     </Badge>
                   </div>
-                  {item.extra?.message && (
-                    <p className="mt-2 text-sm text-slate-700">{item.extra.message as string}</p>
+                  {((item.extra?.message as string) ?? (item.extra?.text as string)) && (
+                    <p className="mt-2 text-sm text-slate-700">
+                      {(item.extra?.message as string) ?? (item.extra?.text as string)}
+                    </p>
                   )}
                   <div className="mt-1 text-xs text-slate-500">
-                    {item.extra?.created_time
-                      ? new Date(item.extra.created_time as string).toLocaleString()
+                    {(item.extra?.created_time as string) || (item.extra?.timestamp as string)
+                      ? new Date(
+                          (item.extra?.created_time as string) ??
+                            (item.extra?.timestamp as string),
+                        ).toLocaleString()
                       : 'N/A'}
                   </div>
                 </div>
@@ -259,6 +321,16 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     return Array.from(symbols).sort();
   }, [coins, selectedPage?.reward_coin_symbol]);
 
+  const instagramRewardCoinOptions = useMemo(() => {
+    const symbols = new Set<string>();
+    coins.forEach((coin) => symbols.add(coin.symbol));
+    if (selectedInstagramAccountMeta?.page?.reward_coin_symbol) {
+      symbols.add(selectedInstagramAccountMeta.page.reward_coin_symbol);
+    }
+    symbols.add('FCN');
+    return Array.from(symbols).sort();
+  }, [coins, selectedInstagramAccountMeta?.page?.reward_coin_symbol]);
+
   const handleRewardCoinChange = (coinSymbol: string) => {
     if (!selectedPage) {
       return;
@@ -269,273 +341,534 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     });
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-slate-900 text-xl font-semibold">Social Insights</h2>
-          <p className="text-slate-500">
-            Monitor Facebook Page performance and engagement in one place.
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          disabled={!activePageId || isSyncing}
-          onClick={() => handleSync(activePageId)}
-        >
-          <RefreshCcw className="w-4 h-4 mr-2" />
-          {isSyncing ? 'Syncing…' : 'Sync Now'}
-        </Button>
-      </div>
+  const handleInstagramRewardCoinChange = (coinSymbol: string) => {
+    const pageId = selectedInstagramAccountMeta?.page?.id;
+    if (!pageId) {
+      return;
+    }
 
-      <Card className="p-4 border-purple-100 space-y-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-slate-600 mb-2">Connected Pages</p>
-            {isPagesLoading ? (
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-10 w-32" />
-                <Skeleton className="h-10 w-24" />
+    updateInstagramRewardCoin(pageId, coinSymbol).catch((error: unknown) => {
+      console.error('[SocialInsightsSection] updateInstagramRewardCoin', error);
+    });
+  };
+
+  const handleSelectInstagramAccount = useCallback(
+    (value: string | null) => {
+      const accountId = value ?? null;
+      selectInstagramAccount(accountId).catch((error: unknown) => {
+        console.error('[SocialInsightsSection] selectInstagramAccount', error);
+      });
+    },
+    [selectInstagramAccount],
+  );
+
+  const renderPostCard = (post: SocialPost) => {
+    const isInstagram = (post.provider ?? '').toLowerCase() === 'instagram';
+    const latestMetric = post.metrics?.[0];
+    const engagedUsers = normalizeEngagedUsers(post);
+
+    const stats = isInstagram
+      ? [
+          { label: 'Likes', value: latestMetric?.like_count ?? 0 },
+          { label: 'Comments', value: latestMetric?.comment_count ?? 0 },
+          { label: 'Reach', value: latestMetric?.reach_count ?? 0 },
+          { label: 'Impressions', value: latestMetric?.impression_count ?? 0 },
+          { label: 'Engagement', value: latestMetric?.click_count ?? 0 },
+          { label: 'Views', value: latestMetric?.view_count ?? 0 },
+        ].filter((stat) => stat.value !== null && stat.value !== undefined)
+      : [
+          { label: 'Likes', value: latestMetric?.like_count ?? 0 },
+          { label: 'Comments', value: latestMetric?.comment_count ?? 0 },
+          { label: 'Shares', value: latestMetric?.share_count ?? 0 },
+          { label: 'Reach', value: latestMetric?.reach_count ?? 0 },
+          { label: 'Impressions', value: latestMetric?.impression_count ?? 0 },
+          { label: 'Clicks', value: latestMetric?.click_count ?? 0 },
+        ].filter((stat) => stat.value !== null && stat.value !== undefined);
+
+    const cardBorderClass = isInstagram ? 'border-orange-100' : 'border-purple-100';
+    const badgeClass = isInstagram
+      ? 'bg-orange-100 text-orange-600 border-orange-200 uppercase text-sm'
+      : 'bg-purple-100 text-purple-600 border-purple-200 uppercase text-sm';
+    const engagedBadgeClass = isInstagram
+      ? 'bg-emerald-100 text-emerald-700 border-emerald-200 text-sm'
+      : 'bg-amber-100 text-amber-700 border-amber-200 text-sm';
+    const imageBorderClass = isInstagram ? 'border-orange-50' : 'border-purple-50';
+    const placeholderClass = isInstagram
+      ? 'border-orange-200 bg-orange-50/40 text-orange-400'
+      : 'border-purple-200 bg-purple-50/40 text-purple-400';
+    const viewLabel = isInstagram ? 'View on Instagram' : 'View on Facebook';
+
+    return (
+      <Card key={post.id} className={`p-3 bg-white border ${cardBorderClass}`}>
+        <div className="flex gap-3">
+          <div className="w-20 flex-shrink-0">
+            {post.full_picture_url ? (
+              <div className={`overflow-hidden rounded-lg border ${imageBorderClass} bg-slate-50`}>
+                <img
+                  src={post.full_picture_url}
+                  alt="Post preview"
+                  className="w-20 h-20 object-cover"
+                  loading="lazy"
+                />
               </div>
-            ) : pages.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Connect a Facebook Page to begin pulling engagement data.
-              </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {pages.map((page: ConnectedFacebookPage) => (
-                  <Button
-                    key={page.id}
-                    variant={page.id === activePageId ? 'default' : 'outline'}
-                    className="bg-purple-600 text-white hover:bg-purple-700"
-                    size="sm"
-                    onClick={() => handleSelectPage(page.id)}
-                  >
-                    {page.name ?? page.page_id}
-                  </Button>
-                ))}
+              <div
+                className={`h-20 w-20 rounded-lg border border-dashed ${placeholderClass} flex items-center justify-center text-[10px] text-center px-1`}
+              >
+                No image
               </div>
             )}
           </div>
-          {selectedPage && (
-            <div className="text-sm text-right space-y-1">
-              <p className="text-slate-500">Last Synced</p>
-              <p className="text-slate-900">
-                {selectedPage.last_synced_at
-                  ? new Date(selectedPage.last_synced_at).toLocaleString()
-                  : '—'}
-              </p>
+
+          <div className="flex-1 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-1">
+              <div className="flex items-center gap-2">
+                <Badge className={badgeClass}>{post.status_type ?? post.object_type ?? 'Post'}</Badge>
+                {engagedUsers.length > 0 && (
+                  <Badge className={engagedBadgeClass}>{engagedUsers.length} engaged</Badge>
+                )}
+              </div>
+              <span className="text-[11px] text-slate-500">
+                {post.published_at ? new Date(post.published_at).toLocaleString() : '—'}
+              </span>
             </div>
-          )}
-        </div>
-        {selectedPage && (
-          <div className="grid gap-3 md:grid-cols-2 md:items-end">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase text-slate-500">Reward Coin</p>
-              {isCoinsLoading ? (
-                <Skeleton className="h-10 w-full md:w-56" />
-              ) : rewardCoinOptions.length === 0 ? (
-                <p className="text-sm text-slate-500">
-                  Create a coin in the My Coin section to enable rewards for this page.
-                </p>
-              ) : (
-                <Select
-                  value={selectedPage.reward_coin_symbol ?? undefined}
-                  onValueChange={handleRewardCoinChange}
-                  disabled={isUpdatingRewardCoin}
-                >
-                  <SelectTrigger className="w-full md:w-56 bg-white text-black hover:bg-white/80">
-                    <SelectValue placeholder="Select coin" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white text-black hover:bg-gray-100">
-                    {rewardCoinOptions.map((symbol) => (
-                      <SelectItem key={symbol} value={symbol} className="bg-white text-black">
-                        {symbol}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+            {stats.length > 0 ? (
+              <div className="flex flex-wrap gap-2 text-xs">
+                {stats.map((stat) => (
+                  <div
+                    key={stat.label}
+                    className={`rounded-md border ${cardBorderClass} bg-slate-50 px-3 py-1`}
+                  >
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wide">{stat.label}</p>
+                    <p className="text-slate-900 font-semibold text-sm">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic">Metrics not available yet.</p>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {post.permalink_url && (
+                <Button variant="link" size="sm" asChild>
+                  <a href={post.permalink_url} target="_blank" rel="noopener noreferrer">
+                    {viewLabel}
+                  </a>
+                </Button>
               )}
-              <p className="text-xs text-slate-500">
-                Choose which of your creator coins funds engagement rewards for this page.
+              <p className="text-[11px] text-slate-400">
+                Synced {post.synced_at ? new Date(post.synced_at).toLocaleString() : '—'}
               </p>
+              {engagedUsers.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => openEngagementModal(post)}
+                >
+                  View Engagement
+                </Button>
+              )}
             </div>
           </div>
-        )}
+        </div>
       </Card>
+    );
+  };
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase text-slate-500">Interaction Type</p>
-          <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              <SelectItem value="reaction">Likes / Reactions</SelectItem>
-              <SelectItem value="comment">Comments</SelectItem>
-              <SelectItem value="share">Shares</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase text-slate-500">Fan Name</p>
-          <Input
-            placeholder="Search by fan name"
-            value={filterSearch}
-            onChange={(event: InputChangeEvent) => setFilterSearch(event.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase text-slate-500">Post Date</p>
-          <Select value={filterDate} onValueChange={(value: string) => setFilterDate(value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Any date" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Any date</SelectItem>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-slate-900 text-xl font-semibold">Social Insights</h2>
+        <p className="text-slate-500">
+          Monitor post performance and fan engagement across Facebook and Instagram.
+        </p>
       </div>
 
-      {isPostsLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Card key={index} className="p-4 border-purple-100">
-              <div className="flex gap-4">
-                <Skeleton className="h-24 w-32 rounded-lg" />
-                <div className="flex-1 space-y-3">
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-3 w-2/3" />
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-5/6" />
+      <Tabs
+        value={activeSocialTab}
+        onValueChange={(value: string) => setActiveSocialTab(value as 'facebook' | 'instagram')}
+        className="space-y-6"
+      >
+        <TabsList className="inline-flex w-full flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-1 md:w-auto">
+          <TabsTrigger
+            value="facebook"
+            className="flex-1 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+          >
+            Facebook
+          </TabsTrigger>
+          <TabsTrigger
+            value="instagram"
+            className="flex-1 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white"
+          >
+            Instagram
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="facebook" className="space-y-6 focus-visible:outline-none">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-slate-900 text-lg font-semibold">Facebook Page Insights</h3>
+              <p className="text-sm text-slate-500">
+                Track reward pools, fan engagement, and post performance for your connected Pages.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              disabled={!activePageId || isSyncing}
+              onClick={() => handleSync(activePageId)}
+            >
+              <RefreshCcw className="w-4 h-4 mr-2" />
+              {isSyncing ? 'Syncing…' : 'Sync Now'}
+            </Button>
+          </div>
+
+          <Card className="p-4 border-purple-100 space-y-4 bg-white">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-slate-600 mb-2">Connected Pages</p>
+                {isPagesLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-10 w-32" />
+                    <Skeleton className="h-10 w-24" />
+                  </div>
+                ) : pages.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    Connect a Facebook Page from the Profile screen to begin pulling engagement data.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {pages.map((page: ConnectedFacebookPage) => (
+                      <Button
+                        key={page.id}
+                        variant={page.id === activePageId ? 'default' : 'outline'}
+                        className="bg-purple-600 text-white hover:bg-purple-700"
+                        size="sm"
+                        onClick={() => handleSelectPage(page.id)}
+                      >
+                        {page.name ?? page.page_id}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedPage && (
+                <div className="text-sm text-right space-y-1">
+                  <p className="text-slate-500">Last Synced</p>
+                  <p className="text-slate-900">
+                    {selectedPage.last_synced_at
+                      ? new Date(selectedPage.last_synced_at).toLocaleString()
+                      : '—'}
+                  </p>
+                </div>
+              )}
+            </div>
+            {selectedPage && (
+              <div className="grid gap-3 md:grid-cols-2 md:items-end">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-slate-500">Reward Coin</p>
+                  {isCoinsLoading ? (
+                    <Skeleton className="h-10 w-full md:w-56" />
+                  ) : rewardCoinOptions.length === 0 ? (
+                    <p className="text-sm text-slate-500">
+                      Create a coin in the My Coin tab to enable rewards for this page.
+                    </p>
+                  ) : (
+                    <Select
+                      value={selectedPage.reward_coin_symbol ?? undefined}
+                      onValueChange={handleRewardCoinChange}
+                      disabled={isUpdatingRewardCoin}
+                    >
+                      <SelectTrigger className="w-full md:w-56 bg-white text-black hover:bg-white/80">
+                        <SelectValue placeholder="Select coin" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white text-black hover:bg-gray-100">
+                        {rewardCoinOptions.map((symbol) => (
+                          <SelectItem key={symbol} value={symbol} className="bg-white text-black">
+                            {symbol}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <p className="text-xs text-slate-500">
+                    Choose which of your creator coins funds engagement rewards for this page.
+                  </p>
                 </div>
               </div>
-            </Card>
-          ))}
-        </div>
-      ) : posts.length === 0 ? (
-        <Card className="p-8 border-dashed border-purple-200 text-center">
-          <TrendingUp className="w-10 h-10 mx-auto text-purple-400 mb-4" />
-          <h3 className="text-slate-900 font-semibold mb-2">No posts synced yet</h3>
-          <p className="text-slate-500 mb-4">
-            Sync your Facebook Page to begin tracking post engagement.
-          </p>
-          <Button className="bg-purple-600 text-white hover:bg-purple-700" disabled={!activePageId || isSyncing} onClick={() => handleSync(activePageId)}>
-            {isSyncing ? 'Syncing…' : 'Sync Now'}
-          </Button>
-        </Card>
-      ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          {filteredPosts.map((post: SocialPost) => {
-            const latestMetric = post.metrics?.[0];
-            const engagedUsers = normalizeEngagedUsers(post);
-            const stats = [
-              { label: 'Likes', value: latestMetric?.like_count ?? 0 },
-              { label: 'Comments', value: latestMetric?.comment_count ?? 0 },
-              { label: 'Shares', value: latestMetric?.share_count ?? 0 },
-              { label: 'Reach', value: latestMetric?.reach_count ?? 0 },
-              { label: 'Impressions', value: latestMetric?.impression_count ?? 0 },
-              { label: 'Clicks', value: latestMetric?.click_count ?? 0 },
-            ].filter((stat) => stat.value !== null && stat.value !== undefined);
+            )}
+          </Card>
 
-            const message = post.message?.trim() ? post.message : 'No caption available.';
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase text-slate-500">Interaction Type</p>
+              <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="like">Likes / Reactions</SelectItem>
+                  <SelectItem value="comment">Comments</SelectItem>
+                  <SelectItem value="share">Shares</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            return (
-              <Card key={post.id} className="p-3 border-purple-100 bg-white">
-                <div className="flex gap-3">
-                  <div className="w-20 flex-shrink-0">
-                    {post.full_picture_url ? (
-                      <div className="overflow-hidden rounded-lg border border-purple-50 bg-slate-50">
-                        <img
-                          src={post.full_picture_url}
-                          alt="Post preview"
-                          className="w-20 h-20 object-cover"
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-20 w-20 rounded-lg border border-dashed border-purple-200 bg-purple-50/40 flex items-center justify-center text-[10px] text-purple-400 text-center px-1">
-                        No image
-                      </div>
-                    )}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase text-slate-500">Fan Name</p>
+              <Input
+                placeholder="Search by fan name"
+                value={filterSearch}
+                onChange={(event: InputChangeEvent) => setFilterSearch(event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase text-slate-500">Post Date</p>
+              <Select value={filterDate} onValueChange={(value: string) => setFilterDate(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Any date" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any date</SelectItem>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                  <SelectItem value="90d">Last 90 days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {isPostsLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Card key={index} className="p-4 border-purple-100">
+                  <div className="flex gap-4">
+                    <Skeleton className="h-24 w-32 rounded-lg" />
+                    <div className="flex-1 space-y-3">
+                      <Skeleton className="h-4 w-1/3" />
+                      <Skeleton className="h-3 w-2/3" />
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-5/6" />
+                    </div>
                   </div>
+                </Card>
+              ))}
+            </div>
+          ) : posts.length === 0 ? (
+            <Card className="p-8 border-dashed border-purple-200 text-center">
+              <TrendingUp className="w-10 h-10 mx-auto text-purple-400 mb-4" />
+              <h3 className="text-slate-900 font-semibold mb-2">No posts synced yet</h3>
+              <p className="text-slate-500 mb-4">
+                Sync your Facebook Page to begin tracking post engagement.
+              </p>
+              <Button
+                className="bg-purple-600 text-white hover:bg-purple-700"
+                disabled={!activePageId || isSyncing}
+                onClick={() => handleSync(activePageId)}
+              >
+                {isSyncing ? 'Syncing…' : 'Sync Now'}
+              </Button>
+            </Card>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {filteredPosts.map((post: SocialPost) => renderPostCard(post))}
+            </div>
+          )}
+        </TabsContent>
 
-                  <div className="flex-1 space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-1">
-                      <div className="flex items-center gap-2">
-                        <Badge className="bg-purple-100 text-purple-600 border-purple-200 uppercase text-sm">
-                          {post.status_type ?? post.object_type ?? 'Post'}
-                        </Badge>
-                        {engagedUsers.length > 0 && (
-                          <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-sm">
-                            {engagedUsers.length} engaged
-                          </Badge>
-                        )}
-                      </div>
-                      <span className="text-[11px] text-slate-500">
-                        {post.published_at ? new Date(post.published_at).toLocaleString() : '—'}
-                      </span>
-                    </div>
-
-                    {/* <p className="text-slate-800 text-sm leading-relaxed line-clamp-3 truncate h-12 overflow-hidden">
-                      {message}
-                    </p> */}
-
-                    {stats.length > 0 ? (
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        {stats.map((stat) => (
-                          <div
-                            key={stat.label}
-                            className="rounded-md border border-purple-100 bg-purple-50/40 px-3 py-1"
-                          >
-                            <p className="text-[10px] text-purple-600 uppercase tracking-wide">
-                              {stat.label}
-                            </p>
-                            <p className="text-slate-900 font-semibold text-sm">{stat.value}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-500 italic">Metrics not available yet.</p>
-                    )}
-
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      {post.permalink_url && (
-                        <Button variant="link" size="sm" asChild>
-                          <a href={post.permalink_url} target="_blank" rel="noopener noreferrer">
-                            View on Facebook
-                          </a>
-                        </Button>
-                      )}
-                      <p className="text-[11px] text-slate-400">
-                        Synced {post.synced_at ? new Date(post.synced_at).toLocaleString() : '—'}
+        <TabsContent value="instagram" className="space-y-6 focus-visible:outline-none">
+          {instagramAccounts.length === 0 && !isInstagramLoading ? (
+            <Card className="p-8 border-dashed border-orange-200 bg-white text-center">
+              <Instagram className="w-10 h-10 mx-auto text-orange-400 mb-4" />
+              <h3 className="text-slate-900 font-semibold mb-2">Connect Instagram</h3>
+              <p className="text-slate-500 mb-4">
+                Link your Instagram professional account from the Profile tab to start tracking
+                engagement automatically.
+              </p>
+              <p className="text-xs text-slate-500">
+                Once connected, you can sync posts, view metrics, and reward fans for their support.
+              </p>
+            </Card>
+          ) : (
+            <>
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  <Instagram className="h-5 w-5 text-orange-500" />
+                  <div>
+                    <h3 className="text-slate-900 text-lg font-semibold">Instagram Professional</h3>
+                    <p className="text-sm text-slate-500">
+                      {selectedInstagramAccountMeta?.instagram_username
+                        ? `${
+                            selectedInstagramAccountMeta.instagram_username.startsWith('@')
+                              ? ''
+                              : '@'
+                          }${selectedInstagramAccountMeta.instagram_username}`
+                        : selectedInstagramAccountMeta?.instagram_account_id ?? 'Connected account'}
+                    </p>
+                    {selectedInstagramAccountMeta?.page?.name && (
+                      <p className="text-xs text-slate-400">
+                        Page:{' '}
+                        <span className="text-slate-600">{selectedInstagramAccountMeta.page.name}</span>
                       </p>
-                      {engagedUsers.length > 0 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs"
-                          onClick={() => openEngagementModal(post)}
-                        >
-                          View Engagement
-                        </Button>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
+                  <div className="flex flex-wrap gap-2">
+                    {instagramAccounts.map((entry) => {
+                      const label = entry.instagram_username
+                        ? `${entry.instagram_username.startsWith('@') ? '' : '@'}${entry.instagram_username}`
+                        : entry.instagram_account_id;
+                      const isActive = entry.id === effectiveInstagramAccountId;
+
+                      return (
+                        <Button
+                          key={entry.id}
+                          variant={isActive ? 'default' : 'outline'}
+                          className={
+                            isActive
+                              ? 'bg-orange-500 text-white hover:bg-orange-600'
+                              : 'border-orange-200 text-orange-600 hover:bg-orange-50'
+                          }
+                          size="sm"
+                          disabled={isInstagramLoading || isInstagramSyncing}
+                          onClick={() => handleSelectInstagramAccount(entry.id)}
+                        >
+                          {label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="border-orange-200 text-orange-600 hover:bg-orange-50"
+                    disabled={isInstagramSyncing || !effectiveInstagramAccountId}
+                    onClick={() => syncInstagram(true, undefined, effectiveInstagramAccountId)}
+                  >
+                    <RefreshCcw className="w-4 h-4 mr-2" />
+                    {isInstagramSyncing ? 'Syncing…' : 'Sync Instagram'}
+                  </Button>
+                </div>
+              </div>
+
+              {selectedInstagramAccountMeta?.page?.id && (
+                <Card className="border-orange-100 bg-white p-4">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase text-slate-500">Reward Coin</p>
+                    {isCoinsLoading ? (
+                      <Skeleton className="h-10 w-full md:w-56" />
+                    ) : instagramRewardCoinOptions.length === 0 ? (
+                      <p className="text-sm text-slate-500">
+                        Create a coin in the My Coin tab to enable rewards for this Instagram account.
+                      </p>
+                    ) : (
+                      <Select
+                        value={selectedInstagramAccountMeta.page?.reward_coin_symbol ?? undefined}
+                        onValueChange={handleInstagramRewardCoinChange}
+                        disabled={isUpdatingInstagramRewardCoin}
+                      >
+                        <SelectTrigger className="w-full md:w-56 bg-white text-black hover:bg-white/80">
+                          <SelectValue placeholder="Select coin" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white text-black hover:bg-gray-100">
+                          {instagramRewardCoinOptions.map((symbol) => (
+                            <SelectItem key={symbol} value={symbol} className="bg-white text-black">
+                              {symbol}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <p className="text-xs text-slate-500">
+                      Choose which coin funds fan rewards earned on Instagram engagement.
+                    </p>
+                  </div>
+                </Card>
+              )}
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-slate-500">Interaction Type</p>
+                  <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All types</SelectItem>
+                      <SelectItem value="like">Likes</SelectItem>
+                      <SelectItem value="comment">Comments</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-slate-500">Fan Name</p>
+                  <Input
+                    placeholder="Search by fan name"
+                    value={filterSearch}
+                    onChange={(event: InputChangeEvent) => setFilterSearch(event.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-slate-500">Post Date</p>
+                  <Select value={filterDate} onValueChange={(value: string) => setFilterDate(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Any date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any date</SelectItem>
+                      <SelectItem value="7d">Last 7 days</SelectItem>
+                      <SelectItem value="30d">Last 30 days</SelectItem>
+                      <SelectItem value="90d">Last 90 days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {isInstagramLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <Card key={index} className="p-4 border-orange-100">
+                      <div className="flex gap-4">
+                        <Skeleton className="h-20 w-20 rounded-lg" />
+                        <div className="flex-1 space-y-3">
+                          <Skeleton className="h-4 w-1/3" />
+                          <Skeleton className="h-3 w-2/3" />
+                          <Skeleton className="h-3 w-full" />
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : instagramPosts.length === 0 ? (
+                <Card className="p-8 border-dashed border-orange-200 text-center bg-white">
+                  <Instagram className="w-10 h-10 mx-auto text-orange-400 mb-4" />
+                  <h3 className="text-slate-900 font-semibold mb-2">No Instagram posts synced yet</h3>
+                  <p className="text-slate-500 mb-4">
+                    Sync your Instagram account to start tracking engagement automatically.
+                  </p>
+                  <Button
+                    className="bg-orange-500 text-white hover:bg-orange-600"
+                    disabled={isInstagramSyncing}
+                    onClick={() => syncInstagram(true, undefined, effectiveInstagramAccountId)}
+                  >
+                    {isInstagramSyncing ? 'Syncing…' : 'Sync Instagram'}
+                  </Button>
+                </Card>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {instagramFilteredPosts.map((post: SocialPost) => renderPostCard(post))}
+                </div>
+              )}
+            </>
+          )}
+        </TabsContent>
+      </Tabs>
+
       {renderEngagementModal()}
     </div>
   );
