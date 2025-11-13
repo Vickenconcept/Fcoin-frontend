@@ -12,6 +12,7 @@ export type DashboardStats = {
   followingCount: number | null;
   isLoading: boolean;
   refresh: () => Promise<void>;
+  transactions: Array<Record<string, any>>;
 };
 
 const normalizeNumber = (value: unknown): number => {
@@ -54,6 +55,7 @@ export const useDashboardStats = (userId?: string, defaultCurrency = 'FCN'): Das
   const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [followingCount, setFollowingCount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [transactions, setTransactions] = useState<Array<Record<string, any>>>([]);
 
   const fetchStats = useCallback(async () => {
     if (!userId) {
@@ -80,11 +82,11 @@ export const useDashboardStats = (userId?: string, defaultCurrency = 'FCN'): Das
         const nextConversion = conversion > 0 ? conversion : derivedConversion;
         setConversionRate(nextConversion > 0 ? nextConversion : 1);
 
-        const transactions = Array.isArray(walletResponse.data.transactions)
+        const transactionsData = Array.isArray(walletResponse.data.transactions)
           ? walletResponse.data.transactions
           : [];
 
-        const totalCredit = transactions.reduce((sum: number, transaction: any) => {
+        const totalCredit = transactionsData.reduce((sum: number, transaction: any) => {
           const type = (transaction.type ?? '').toString().toUpperCase();
           if (type === 'CREDIT' || type === 'TOPUP') {
             return sum + normalizeNumber(transaction.amount);
@@ -94,6 +96,7 @@ export const useDashboardStats = (userId?: string, defaultCurrency = 'FCN'): Das
         }, 0);
 
         setEarnedCoinsTotal(totalCredit || balanceValue);
+        setTransactions(transactionsData);
       } else if (!walletResponse.ok && walletResponse.errors) {
         toast.error('Unable to load wallet details.');
       }
@@ -139,6 +142,7 @@ export const useDashboardStats = (userId?: string, defaultCurrency = 'FCN'): Das
     followingCount,
     isLoading,
     refresh: fetchStats,
+    transactions,
   };
 };
 

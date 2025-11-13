@@ -421,11 +421,11 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
 
         <TabsContent value="balances" className="space-y-4 mt-6">
           {isLoading ? (
-            <Card className="p-6 border-purple-100">
+            <Card className="p-6 border-purple-100 bg-white">
               <p className="text-slate-600">Loading wallet data...</p>
             </Card>
           ) : sortedCoinBalances.length === 0 ? (
-            <Card className="p-6 border-purple-100 text-center">
+            <Card className="p-6 border-purple-100 bg-white text-center">
               <p className="text-slate-900 font-medium mb-2">No coins yet</p>
               <p className="text-slate-600">
                 Start following creators and engaging with their content to earn coins!
@@ -441,7 +441,7 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
                 : null;
 
               return (
-                <Card key={coin_symbol} className="p-6 border-purple-100">
+                <Card key={coin_symbol} className="p-6 border-purple-100 bg-white">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center">
@@ -471,7 +471,7 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4 mt-6">
-          <Card className="p-6 border-purple-100">
+          <Card className="p-6 border-purple-100 bg-white">
             <h4 className="text-slate-900 font-semibold mb-4">Recent Transactions</h4>
             {isLoading ? (
               <p className="text-slate-600">Loading transactions…</p>

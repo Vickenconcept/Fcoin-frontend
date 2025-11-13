@@ -30,6 +30,8 @@ import { LaunchCoinModal } from './LaunchCoinModal';
 import { useRewardRules } from './hooks/useRewardRules';
 import { useCoins } from './hooks/useCoins';
 import type { CreatorCoin } from './hooks/useCoins';
+import { useRecentEngagements } from './hooks/useRecentEngagements';
+import type { RecentEngagement } from './hooks/useRecentEngagements';
 type ClickEvent = {
   stopPropagation: () => void;
 };
@@ -58,6 +60,7 @@ export default function DashboardLayout() {
     followingCount,
     isLoading: isStatsLoading,
     refresh: refreshStats,
+    transactions: walletTransactions,
   } = useDashboardStats(user?.id, user?.default_coin_symbol ?? 'FCN');
   const {
     rules: rewardRules,
@@ -70,6 +73,11 @@ export default function DashboardLayout() {
     isLoading: isCoinsLoading,
     reload: reloadCoins,
   } = useCoins();
+  const {
+    engagements: recentEngagements,
+    isLoading: isRecentEngagementsLoading,
+    reload: reloadRecentEngagements,
+  } = useRecentEngagements(6);
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
 
@@ -103,6 +111,45 @@ export default function DashboardLayout() {
   const earnedCoinsValue = earnedCoinsTotal > 0 ? earnedCoinsTotal : walletBalance;
   const earnedCoinsDisplay =
     isStatsLoading && earnedCoinsTotal === 0 ? '…' : formatNumber(earnedCoinsValue);
+
+  const earnedCoinEntries = useMemo(() => {
+    if (!Array.isArray(walletTransactions)) {
+      return [];
+    }
+
+    return walletTransactions
+      .filter((transaction: any) => {
+        const action = String(transaction?.metadata?.action ?? '').toLowerCase();
+        return action === 'reward_received';
+      })
+      .sort((a: any, b: any) => {
+        const dateA = new Date(a?.created_at ?? a?.metadata?.created_at ?? 0).getTime();
+        const dateB = new Date(b?.created_at ?? b?.metadata?.created_at ?? 0).getTime();
+        return dateB - dateA;
+      })
+      .slice(0, 3)
+      .map((transaction: any) => {
+        const amount = Number(transaction?.amount ?? 0);
+        const metadata = transaction?.metadata ?? {};
+        const creatorName =
+          metadata.distributed_by_creator_name ??
+          metadata.from_display_name ??
+          metadata.from_username ??
+          'Creator reward';
+        const coinSymbol = String(transaction?.currency ?? primaryCoinSymbol ?? 'FCN').toUpperCase();
+
+        return {
+          id: String(transaction?.id ?? `${coinSymbol}-${transaction?.reference ?? Math.random()}`),
+          coinSymbol,
+          amount,
+          displayAmount: formatNumber(amount),
+          creatorName,
+          createdAt: transaction?.created_at ?? metadata.transacted_at ?? null,
+        };
+      });
+  }, [walletTransactions, formatNumber, primaryCoinSymbol]);
+
+  const isEarnedCoinsLoading = isStatsLoading && earnedCoinEntries.length === 0;
 
   const activeTab: TabType = allowedTabs.includes((section ?? 'home') as TabType)
     ? ((section ?? 'home') as TabType)
@@ -364,8 +411,14 @@ export default function DashboardLayout() {
               followerCountDisplay={followerCountDisplay}
               earnedCoinsDisplay={earnedCoinsDisplay}
               followingCountDisplay={followingCountDisplay}
+          recentEngagements={recentEngagements}
+          isRecentEngagementsLoading={isRecentEngagementsLoading}
+          earnedCoinEntries={earnedCoinEntries}
+          isEarnedCoinsLoading={isEarnedCoinsLoading}
               onNavigate={(tab) => handleNavigate(tab)}
               onOpenAllocateModal={() => setAllocateModalOpen(true)}
+          onRefreshEngagements={reloadRecentEngagements}
+          onRefreshEarnings={refreshStats}
             />
           )}
 

@@ -1,4 +1,5 @@
-import React, { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import * as React from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
@@ -76,24 +77,18 @@ export function DiscoverSection() {
   }, []);
 
   useEffect(() => {
-    fetchUsers().catch((error) => {
-      console.error('[Discover] initial load failed', error);
-      toast.error('Something went wrong.');
-    });
-  }, [fetchUsers]);
+    const trimmed = searchTerm.trim();
+    const handler = window.setTimeout(() => {
+      fetchUsers(trimmed.length > 0 ? trimmed : undefined).catch((error) => {
+        console.error('[Discover] search fetch failed', error);
+        toast.error('Unable to load creators right now.');
+      });
+    }, 350);
 
-  const handleSearch = useCallback(
-    async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      try {
-        await fetchUsers(searchTerm.trim());
-      } catch (error) {
-        console.error(error);
-        toast.error('Search failed. Please try again.');
-      }
-    },
-    [fetchUsers, searchTerm],
-  );
+    return () => {
+      window.clearTimeout(handler);
+    };
+  }, [fetchUsers, searchTerm]);
 
   const handleFollow = useCallback(
     async (userId: string, isFollowing: boolean) => {
@@ -187,14 +182,29 @@ export function DiscoverSection() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-6 border-purple-100">
-        <form onSubmit={handleSearch} className="flex items-center gap-4 mb-4">
+      <Card className="p-6 border-purple-100 bg-white">
+        <form
+          onSubmit={(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            event: any,
+          ) => {
+            event.preventDefault();
+            fetchUsers(searchTerm.trim()).catch((error) => {
+              console.error('[Discover] manual search failed', error);
+              toast.error('Search failed. Please try again.');
+            });
+          }}
+          className="flex items-center gap-4 mb-4"
+        >
           <div className="flex-1">
             <Input
               placeholder="Search creators by name or username..."
               className="w-full"
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                event: any,
+              ) => setSearchTerm(event.target.value)}
             />
           </div>
           <Button
@@ -209,25 +219,25 @@ export function DiscoverSection() {
       </Card>
 
       {isLoading && (
-        <Card className="p-6 border-purple-100">
+        <Card className="p-6 border-purple-100 bg-white">
           <p className="text-slate-600">Loading creators...</p>
         </Card>
       )}
 
       {!isLoading && !hasResults && (
-        <Card className="p-6 border-purple-100 text-center">
+        <Card className="p-6 border-purple-100 bg-white text-center">
           <p className="text-slate-900 font-medium mb-2">No creators found</p>
           <p className="text-slate-600">Try adjusting your search or check back later for new creators.</p>
         </Card>
       )}
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {users.map((user) => {
           const isFollowing = followingMap[user.id] || user.is_following || false;
           const isLoadingFollow = loadingFollows[user.id] || false;
 
           return (
-            <Card key={user.id} className="p-6 border-purple-100 hover:shadow-xl transition-shadow">
+            <Card key={user.id} className="p-6 border-purple-100 bg-white hover:shadow-xl transition-shadow">
               <div className="flex items-start gap-4 mb-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center overflow-hidden">
                   {renderAvatar(user)}

@@ -827,7 +827,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                       onValueChange={handleRewardCoinChange}
                       disabled={isUpdatingRewardCoin}
                     >
-                      <SelectTrigger className="w-full md:w-56 bg-white text-black hover:bg-white/80">
+                      <SelectTrigger className="w-full md:w-56 bg-white text-slate-900 border border-slate-200 hover:bg-white/90">
                         <SelectValue placeholder="Select coin" />
                       </SelectTrigger>
                       <SelectContent className="bg-white text-black hover:bg-gray-100">
@@ -851,7 +851,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase text-slate-500">Interaction Type</p>
               <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white text-slate-900 border border-slate-200">
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -875,7 +875,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase text-slate-500">Post Date</p>
               <Select value={filterDate} onValueChange={(value: string) => setFilterDate(value)}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white text-slate-900 border border-slate-200">
                   <SelectValue placeholder="Any date" />
                 </SelectTrigger>
                 <SelectContent>
@@ -905,7 +905,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
               ))}
             </div>
           ) : posts.length === 0 ? (
-            <Card className="p-8 border-dashed border-purple-200 text-center">
+            <Card className="p-8 border-dashed border-purple-200 bg-white text-center">
               <TrendingUp className="w-10 h-10 mx-auto text-purple-400 mb-4" />
               <h3 className="text-slate-900 font-semibold mb-2">No posts synced yet</h3>
               <p className="text-slate-500 mb-4">
@@ -1017,7 +1017,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                         onValueChange={handleInstagramRewardCoinChange}
                         disabled={isUpdatingInstagramRewardCoin}
                       >
-                        <SelectTrigger className="w-full md:w-56 bg-white text-black hover:bg-white/80">
+                        <SelectTrigger className="w-full md:w-56 bg-white text-slate-900 border border-slate-200 hover:bg-white/90">
                           <SelectValue placeholder="Select coin" />
                         </SelectTrigger>
                         <SelectContent className="bg-white text-black hover:bg-gray-100">
@@ -1040,7 +1040,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase text-slate-500">Interaction Type</p>
                   <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white text-slate-900 border border-slate-200">
                       <SelectValue placeholder="All types" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1063,7 +1063,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase text-slate-500">Post Date</p>
                   <Select value={filterDate} onValueChange={(value: string) => setFilterDate(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white text-slate-900 border border-slate-200">
                       <SelectValue placeholder="Any date" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1206,7 +1206,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                         onValueChange={handleTikTokRewardCoinChange}
                         disabled={isUpdatingTikTokRewardCoin}
                       >
-                        <SelectTrigger className="w-full md:w-56 bg-white text-black hover:bg-white/80">
+                        <SelectTrigger className="w-full md:w-56 bg-white text-slate-900 border border-slate-200 hover:bg-white/90">
                           <SelectValue placeholder="Select coin" />
                         </SelectTrigger>
                         <SelectContent className="bg-white text-black hover:bg-gray-100">
@@ -1229,7 +1229,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase text-slate-500">Interaction Type</p>
                   <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white text-slate-900 border border-slate-200">
                       <SelectValue placeholder="All types" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1253,7 +1253,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase text-slate-500">Post Date</p>
                   <Select value={filterDate} onValueChange={(value: string) => setFilterDate(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white text-slate-900 border border-slate-200">
                       <SelectValue placeholder="Any date" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1390,7 +1390,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                         onValueChange={handleYouTubeRewardCoinChange}
                         disabled={isUpdatingYouTubeRewardCoin}
                       >
-                        <SelectTrigger className="w-full md:w-56 bg-white text-black hover:bg-white/80">
+                        <SelectTrigger className="w-full md:w-56 bg-white text-slate-900 border border-slate-200 hover:bg-white/90">
                           <SelectValue placeholder="Select coin" />
                         </SelectTrigger>
                         <SelectContent className="bg-white text-black hover:bg-gray-100">
@@ -1413,7 +1413,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase text-slate-500">Interaction Type</p>
                   <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white text-slate-900 border border-slate-200">
                       <SelectValue placeholder="All types" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1435,7 +1435,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase text-slate-500">Post Date</p>
                   <Select value={filterDate} onValueChange={(value: string) => setFilterDate(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white text-slate-900 border border-slate-200">
                       <SelectValue placeholder="Any date" />
                     </SelectTrigger>
                     <SelectContent>

@@ -3,9 +3,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { AlertTriangle, CheckCircle, Facebook, Info, Instagram, Loader2, Music2, Youtube } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import {
+  AlertTriangle,
+  CheckCircle,
+  Facebook,
+  Info,
+  Instagram,
+  Loader2,
+  Music2,
+  Youtube,
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSocialAccounts } from '../hooks/useSocialAccounts';
+import { useNotificationPreferences } from '../hooks/useNotificationPreferences';
+import type { PreferenceKey } from '../hooks/useNotificationPreferences';
 import { FacebookPagesManager } from './FacebookPagesManager';
 import { TikTokAccountsManager } from './TikTokAccountsManager';
 import { InstagramAccountsManager } from './InstagramAccountsManager';
@@ -93,6 +105,14 @@ export function ProfileSection() {
     connectYouTube,
     disconnect,
   } = useSocialAccounts();
+  const {
+    preferences: notificationPreferences,
+    isSaving: isSavingNotificationPrefs,
+    isDirty: isNotificationPrefsDirty,
+    updatePreference: updateNotificationPreference,
+    reset: resetNotificationPreferences,
+    save: saveNotificationPreferences,
+  } = useNotificationPreferences();
   const [isFacebookManagerOpen, setIsFacebookManagerOpen] = useState(false);
   const [isInstagramManagerOpen, setIsInstagramManagerOpen] = useState(false);
   const [isTikTokManagerOpen, setIsTikTokManagerOpen] = useState(false);
@@ -115,6 +135,28 @@ export function ProfileSection() {
   const trimmedUsername = username.trim();
   const hasProfileChanges =
     trimmedDisplayName !== originalDisplayName || trimmedUsername !== originalUsername;
+
+  const notificationRows: Array<{
+    key: PreferenceKey;
+    label: string;
+    description: string;
+  }> = [
+    {
+      key: 'top_up',
+      label: 'Wallet top-ups',
+      description: 'Alert when your wallet balance increases after a top-up.',
+    },
+    {
+      key: 'wallet_transfer',
+      label: 'Peer transfers',
+      description: 'Notify when you send or receive coins from another user.',
+    },
+    {
+      key: 'reward',
+      label: 'Reward payouts',
+      description: 'Let me know when engagement rewards are delivered.',
+    },
+  ];
 
   useEffect(() => {
     const next = trimmedUsername;
@@ -279,7 +321,7 @@ export function ProfileSection() {
       )}
 
       {/* Profile Info */}
-      <Card className="p-6 border-purple-100">
+      <Card className="p-6 border-purple-100 bg-white">
         <h3 className="text-slate-900 mb-6">Profile Information</h3>
         <div className="flex items-start gap-6 mb-6">
           <div className="w-24 h-24 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center">
@@ -350,8 +392,119 @@ export function ProfileSection() {
         </Button>
       </Card>
 
+      <Card className="p-6 border-purple-100 bg-white">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-1">
+            <h3 className="text-slate-900">Notification Preferences</h3>
+            <p className="text-slate-600 text-sm">
+              Decide where you want alerts for top-ups, transfers, and rewards to appear.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!isNotificationPrefsDirty || isSavingNotificationPrefs}
+              onClick={resetNotificationPreferences}
+            >
+              Reset
+            </Button>
+            <Button
+              size="sm"
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              disabled={!isNotificationPrefsDirty || isSavingNotificationPrefs}
+              onClick={() => {
+                void saveNotificationPreferences();
+              }}
+            >
+              {isSavingNotificationPrefs ? 'Saving…' : 'Save Preferences'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-slate-900 font-semibold">Email alerts</h4>
+              <p className="text-xs text-slate-500">
+                Keep your inbox in the loop for important wallet activity.
+              </p>
+            </div>
+            <div className="space-y-4">
+              {notificationRows.map((option) => {
+                const enabled = notificationPreferences.email[option.key];
+
+                return (
+                  <div
+                    key={`email-${option.key}`}
+                    className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm"
+                  >
+                    <div>
+                      <p className="text-sm text-slate-900 font-medium">{option.label}</p>
+                      <p className="text-xs text-slate-500">{option.description}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        {enabled ? 'On' : 'Off'}
+                      </span>
+                      <Switch
+                        checked={enabled}
+                        onCheckedChange={(checked: boolean) =>
+                          updateNotificationPreference('email', option.key, Boolean(checked))
+                        }
+                        aria-label={`Toggle ${option.label} email alerts`}
+                        className="data-[state=unchecked]:bg-slate-300 data-[state=checked]:bg-purple-600 transition-colors"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-slate-900 font-semibold">In-app notifications</h4>
+              <p className="text-xs text-slate-500">
+                Show activity updates inside the dashboard notifications stream.
+              </p>
+            </div>
+            <div className="space-y-4">
+              {notificationRows.map((option) => {
+                const enabled = notificationPreferences.in_app[option.key];
+
+                return (
+                  <div
+                    key={`inapp-${option.key}`}
+                    className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm"
+                  >
+                    <div>
+                      <p className="text-sm text-slate-900 font-medium">{option.label}</p>
+                      <p className="text-xs text-slate-500">{option.description}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        {enabled ? 'On' : 'Off'}
+                      </span>
+                      <Switch
+                        checked={enabled}
+                        onCheckedChange={(checked: boolean) =>
+                          updateNotificationPreference('in_app', option.key, Boolean(checked))
+                        }
+                        aria-label={`Toggle ${option.label} in-app alerts`}
+                        className="data-[state=unchecked]:bg-slate-300 data-[state=checked]:bg-purple-600 transition-colors"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Connected Social Accounts */}
-      <Card className="p-6 border-purple-100">
+      <Card className="p-6 border-purple-100 bg-white">
         <h3 className="text-slate-900 mb-6">Connected Social Accounts</h3>
         <p className="text-slate-600 mb-6">
           Connect your social media accounts to track engagement and reward your followers.
@@ -397,7 +550,7 @@ export function ProfileSection() {
             };
 
             return (
-              <Card key={provider.key} className="p-4 border-purple-100">
+              <Card key={provider.key} className="p-4 border-purple-100 bg-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 ${provider.color} rounded-xl flex items-center justify-center`}>

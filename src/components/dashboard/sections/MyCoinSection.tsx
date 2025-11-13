@@ -149,7 +149,7 @@ export function MyCoinSection({
   return (
     <div className="space-y-6">
       {!hasCoins ? (
-        <Card className="p-12 text-center border-purple-100">
+        <Card className="p-12 text-center border-purple-100 bg-white">
           <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <Coins className="w-12 h-12 text-white" />
           </div>
@@ -212,7 +212,7 @@ export function MyCoinSection({
             </div>
           </Card>
 
-          <Card className="p-6 border-purple-100">
+          <Card className="p-6 border-purple-100 bg-white">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-slate-900 text-lg font-semibold">Your Coins</h3>
@@ -262,7 +262,7 @@ export function MyCoinSection({
             )}
           </Card>
 
-          <Card className="p-6 border-purple-100">
+          <Card className="p-6 border-purple-100 bg-white">
             <form className="space-y-6" onSubmit={handleSaveRewardRules}>
               <div>
                 <h3 className="text-slate-900 mb-2">Reward Distribution Settings</h3>
@@ -309,7 +309,7 @@ export function MyCoinSection({
             </form>
           </Card>
 
-          <Card className="p-6 border-purple-100">
+          <Card className="p-6 border-purple-100 bg-white">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-slate-900 text-lg font-semibold">My Followers ({followerCountDisplay})</h3>
               <Button className="bg-purple-600 text-white hover:bg-purple-700" disabled={true} variant="outline" size="sm">
