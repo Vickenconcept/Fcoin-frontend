@@ -13,11 +13,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Instagram, Music2, RefreshCcw, TrendingUp, Users } from 'lucide-react';
+import { Instagram, Music2, RefreshCcw, TrendingUp, Users, Youtube } from 'lucide-react';
 import { useFacebookPages, ConnectedFacebookPage } from '../hooks/useFacebookPages';
 import { useFacebookPagePosts, SocialPost } from '../hooks/useFacebookPagePosts';
 import { useInstagramPosts } from '../hooks/useInstagramPosts';
 import { useTikTokPosts } from '../hooks/useTikTokPosts';
+import { useYouTubePosts } from '../hooks/useYouTubePosts';
 import type { CreatorCoin } from '../hooks/useCoins';
 
 type NormalizedEngagedUser = {
@@ -110,13 +111,27 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     selectAccount: selectTikTokAccount,
   } = useTikTokPosts();
 
+  const {
+    posts: youtubePosts,
+    accounts: youtubeAccounts,
+    account: youtubeAccount,
+    selectedAccountId: selectedYouTubeAccountId,
+    isLoading: isYouTubeLoading,
+    isSyncing: isYouTubeSyncing,
+    isUpdatingRewardCoin: isUpdatingYouTubeRewardCoin,
+    load: loadYouTubePosts,
+    sync: syncYouTube,
+    updateRewardCoin: updateYouTubeRewardCoin,
+    selectAccount: selectYouTubeAccount,
+  } = useYouTubePosts();
+
   const [activePageId, setActivePageId] = useState(null as string | null);
   const [engagementModalPost, setEngagementModalPost] = useState<SocialPost | null>(null);
   const [engagementModalOpen, setEngagementModalOpen] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
   const [filterSearch, setFilterSearch] = useState('');
   const [filterDate, setFilterDate] = useState<string>('all');
-  const [activeSocialTab, setActiveSocialTab] = useState<'facebook' | 'instagram' | 'tiktok'>(
+  const [activeSocialTab, setActiveSocialTab] = useState<'facebook' | 'instagram' | 'tiktok' | 'youtube'>(
     'facebook',
   );
 
@@ -154,12 +169,20 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
   }, [loadTikTokPosts]);
 
   useEffect(() => {
+    loadYouTubePosts().catch((error: unknown) =>
+      console.error('[SocialInsightsSection] loadYouTubePosts', error),
+    );
+  }, [loadYouTubePosts]);
+
+  useEffect(() => {
     if (activeSocialTab === 'facebook') {
       if (pages.length === 0) {
         if (instagramAccounts.length > 0) {
           setActiveSocialTab('instagram');
         } else if (tiktokAccounts.length > 0) {
           setActiveSocialTab('tiktok');
+        } else if (youtubeAccounts.length > 0) {
+          setActiveSocialTab('youtube');
         }
       }
     } else if (activeSocialTab === 'instagram') {
@@ -168,6 +191,8 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
           setActiveSocialTab('facebook');
         } else if (tiktokAccounts.length > 0) {
           setActiveSocialTab('tiktok');
+        } else if (youtubeAccounts.length > 0) {
+          setActiveSocialTab('youtube');
         }
       }
     } else if (activeSocialTab === 'tiktok') {
@@ -176,10 +201,22 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
           setActiveSocialTab('facebook');
         } else if (instagramAccounts.length > 0) {
           setActiveSocialTab('instagram');
+        } else if (youtubeAccounts.length > 0) {
+          setActiveSocialTab('youtube');
+        }
+      }
+    } else if (activeSocialTab === 'youtube') {
+      if (youtubeAccounts.length === 0) {
+        if (pages.length > 0) {
+          setActiveSocialTab('facebook');
+        } else if (instagramAccounts.length > 0) {
+          setActiveSocialTab('instagram');
+        } else if (tiktokAccounts.length > 0) {
+          setActiveSocialTab('tiktok');
         }
       }
     }
-  }, [activeSocialTab, pages.length, instagramAccounts.length, tiktokAccounts.length]);
+  }, [activeSocialTab, pages.length, instagramAccounts.length, tiktokAccounts.length, youtubeAccounts.length]);
 
   const selectedPage = useMemo(() => {
     const targetId = activePageId ?? selectedPageId ?? '';
@@ -256,6 +293,10 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     () => applyFilters(tiktokPosts),
     [applyFilters, tiktokPosts],
   );
+  const youtubeFilteredPosts = useMemo(
+    () => applyFilters(youtubePosts),
+    [applyFilters, youtubePosts],
+  );
 
   const effectiveInstagramAccountId = useMemo(() => {
     return selectedInstagramAccountId ?? instagramAccounts[0]?.id ?? null;
@@ -284,6 +325,20 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     }
     return tiktokAccount;
   }, [effectiveTikTokAccountId, tiktokAccounts, tiktokAccount]);
+
+  const effectiveYouTubeAccountId = useMemo(() => {
+    return selectedYouTubeAccountId ?? youtubeAccounts[0]?.id ?? null;
+  }, [selectedYouTubeAccountId, youtubeAccounts]);
+
+  const selectedYouTubeAccountMeta = useMemo(() => {
+    if (effectiveYouTubeAccountId) {
+      const match = youtubeAccounts.find((item) => item.id === effectiveYouTubeAccountId);
+      if (match) {
+        return match;
+      }
+    }
+    return youtubeAccount;
+  }, [effectiveYouTubeAccountId, youtubeAccounts, youtubeAccount]);
 
   const openEngagementModal = (post: SocialPost) => {
     setEngagementModalPost(post);
@@ -403,6 +458,16 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     return Array.from(symbols).sort();
   }, [coins, selectedTikTokAccountMeta?.page?.reward_coin_symbol]);
 
+  const youtubeRewardCoinOptions = useMemo(() => {
+    const symbols = new Set<string>();
+    coins.forEach((coin) => symbols.add(coin.symbol));
+    if (selectedYouTubeAccountMeta?.page?.reward_coin_symbol) {
+      symbols.add(selectedYouTubeAccountMeta.page.reward_coin_symbol);
+    }
+    symbols.add('FCN');
+    return Array.from(symbols).sort();
+  }, [coins, selectedYouTubeAccountMeta?.page?.reward_coin_symbol]);
+
   const handleRewardCoinChange = (coinSymbol: string) => {
     if (!selectedPage) {
       return;
@@ -455,10 +520,32 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
     [selectTikTokAccount],
   );
 
+  const handleYouTubeRewardCoinChange = (coinSymbol: string) => {
+    const pageId = selectedYouTubeAccountMeta?.page?.id;
+    if (!pageId) {
+      return;
+    }
+
+    updateYouTubeRewardCoin(pageId, coinSymbol).catch((error: unknown) => {
+      console.error('[SocialInsightsSection] updateYouTubeRewardCoin', error);
+    });
+  };
+
+  const handleSelectYouTubeAccount = useCallback(
+    (value: string | null) => {
+      const accountId = value ?? null;
+      selectYouTubeAccount(accountId).catch((error: unknown) => {
+        console.error('[SocialInsightsSection] selectYouTubeAccount', error);
+      });
+    },
+    [selectYouTubeAccount],
+  );
+
   const renderPostCard = (post: SocialPost) => {
     const provider = (post.provider ?? '').toLowerCase();
     const isInstagram = provider === 'instagram';
     const isTikTok = provider === 'tiktok';
+    const isYouTube = provider === 'youtube';
     const latestMetric = post.metrics?.[0];
     const engagedUsers = normalizeEngagedUsers(post);
 
@@ -480,6 +567,14 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
           { label: 'Impressions', value: latestMetric?.impression_count ?? 0 },
           { label: 'Views', value: latestMetric?.view_count ?? 0 },
         ]
+      : isYouTube
+      ? [
+          { label: 'Likes', value: latestMetric?.like_count ?? 0 },
+          { label: 'Comments', value: latestMetric?.comment_count ?? 0 },
+          { label: 'Views', value: latestMetric?.view_count ?? 0 },
+          { label: 'Reach', value: latestMetric?.reach_count ?? 0 },
+          { label: 'Impressions', value: latestMetric?.impression_count ?? 0 },
+        ]
       : [
           { label: 'Likes', value: latestMetric?.like_count ?? 0 },
           { label: 'Comments', value: latestMetric?.comment_count ?? 0 },
@@ -497,31 +592,43 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
       ? 'border-orange-100'
       : isTikTok
       ? 'border-sky-100'
+      : isYouTube
+      ? 'border-red-100'
       : 'border-purple-100';
     const badgeClass = isInstagram
       ? 'bg-orange-100 text-orange-600 border-orange-200 uppercase text-sm'
       : isTikTok
       ? 'bg-sky-100 text-sky-600 border-sky-200 uppercase text-sm'
+      : isYouTube
+      ? 'bg-red-100 text-red-600 border-red-200 uppercase text-sm'
       : 'bg-purple-100 text-purple-600 border-purple-200 uppercase text-sm';
     const engagedBadgeClass = isInstagram
       ? 'bg-emerald-100 text-emerald-700 border-emerald-200 text-sm'
       : isTikTok
       ? 'bg-cyan-100 text-cyan-700 border-cyan-200 text-sm'
+      : isYouTube
+      ? 'bg-red-100 text-red-600 border-red-200 text-sm'
       : 'bg-amber-100 text-amber-700 border-amber-200 text-sm';
     const imageBorderClass = isInstagram
       ? 'border-orange-50'
       : isTikTok
       ? 'border-sky-50'
+      : isYouTube
+      ? 'border-red-50'
       : 'border-purple-50';
     const placeholderClass = isInstagram
       ? 'border-orange-200 bg-orange-50/40 text-orange-400'
       : isTikTok
       ? 'border-sky-200 bg-sky-50/40 text-sky-500'
+      : isYouTube
+      ? 'border-red-200 bg-red-50/40 text-red-500'
       : 'border-purple-200 bg-purple-50/40 text-purple-400';
     const viewLabel = isInstagram
       ? 'View on Instagram'
       : isTikTok
       ? 'View on TikTok'
+      : isYouTube
+      ? 'View on YouTube'
       : 'View on Facebook';
 
     return (
@@ -608,7 +715,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
       <div>
         <h2 className="text-slate-900 text-xl font-semibold">Social Insights</h2>
         <p className="text-slate-500">
-          Monitor post performance and fan engagement across Facebook and Instagram.
+          Monitor post performance and fan engagement across Facebook, Instagram, and TikTok.
         </p>
       </div>
 
@@ -637,6 +744,12 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
             className="flex-1 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-sky-500 data-[state=active]:text-white"
           >
             TikTok
+          </TabsTrigger>
+          <TabsTrigger
+            value="youtube"
+            className="flex-1 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-red-500 data-[state=active]:text-white"
+          >
+            YouTube
           </TabsTrigger>
         </TabsList>
 
@@ -1186,6 +1299,188 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
                   {tiktokFilteredPosts.map((post: SocialPost) => renderPostCard(post))}
+                </div>
+              )}
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="youtube" className="space-y-6 focus-visible:outline-none">
+          {youtubeAccounts.length === 0 && !isYouTubeLoading ? (
+            <Card className="p-8 border-dashed border-red-200 bg-white text-center">
+              <Youtube className="w-10 h-10 mx-auto text-red-400 mb-4" />
+              <h3 className="text-slate-900 font-semibold mb-2">Connect YouTube</h3>
+              <p className="text-slate-500 mb-4">
+                Link your YouTube channel from the Profile tab to sync videos, comments, and engagement.
+              </p>
+              <p className="text-xs text-slate-500">
+                Once connected, you can sync videos, view engagement metrics, and reward fans automatically.
+              </p>
+            </Card>
+          ) : (
+            <>
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  <Youtube className="h-5 w-5 text-red-500" />
+                  <div>
+                    <h3 className="text-slate-900 text-lg font-semibold">YouTube Channel</h3>
+                    <p className="text-sm text-slate-500">
+                      {selectedYouTubeAccountMeta?.youtube_channel_title ?? selectedYouTubeAccountMeta?.youtube_channel_id ?? 'Connected channel'}
+                    </p>
+                    {selectedYouTubeAccountMeta?.page?.name && (
+                      <p className="text-xs text-slate-400">
+                        Display:{' '}
+                        <span className="text-slate-600">{selectedYouTubeAccountMeta.page.name}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
+                  <div className="flex flex-wrap gap-2">
+                    {youtubeAccounts.map((entry) => {
+                      const label =
+                        entry.youtube_channel_title ??
+                        entry.youtube_channel_id ??
+                        entry.social_account_id;
+                      const isActive = entry.id === effectiveYouTubeAccountId;
+
+                      return (
+                        <Button
+                          key={entry.id}
+                          variant={isActive ? 'default' : 'outline'}
+                          className={
+                            isActive
+                              ? 'bg-red-500 text-white hover:bg-red-600'
+                              : 'border-red-200 text-red-600 hover:bg-red-50'
+                          }
+                          size="sm"
+                          disabled={isYouTubeLoading || isYouTubeSyncing}
+                          onClick={() => handleSelectYouTubeAccount(entry.id)}
+                        >
+                          {label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="border-red-200 text-red-600 hover:bg-red-50"
+                    disabled={isYouTubeSyncing || !effectiveYouTubeAccountId}
+                    onClick={() => syncYouTube(true, undefined, effectiveYouTubeAccountId)}
+                  >
+                    <RefreshCcw className="w-4 h-4 mr-2" />
+                    {isYouTubeSyncing ? 'Syncing…' : 'Sync YouTube'}
+                  </Button>
+                </div>
+              </div>
+
+              {selectedYouTubeAccountMeta?.page?.id && (
+                <Card className="border-red-100 bg-white p-4">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase text-slate-500">Reward Coin</p>
+                    {isCoinsLoading ? (
+                      <Skeleton className="h-10 w-full md:w-56" />
+                    ) : youtubeRewardCoinOptions.length === 0 ? (
+                      <p className="text-sm text-slate-500">
+                        Create a coin in the My Coin tab to enable rewards for this YouTube channel.
+                      </p>
+                    ) : (
+                      <Select
+                        value={selectedYouTubeAccountMeta.page?.reward_coin_symbol ?? undefined}
+                        onValueChange={handleYouTubeRewardCoinChange}
+                        disabled={isUpdatingYouTubeRewardCoin}
+                      >
+                        <SelectTrigger className="w-full md:w-56 bg-white text-black hover:bg-white/80">
+                          <SelectValue placeholder="Select coin" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white text-black hover:bg-gray-100">
+                          {youtubeRewardCoinOptions.map((symbol) => (
+                            <SelectItem key={symbol} value={symbol} className="bg-white text-black">
+                              {symbol}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <p className="text-xs text-slate-500">
+                      Choose which coin funds fan rewards earned on YouTube engagement.
+                    </p>
+                  </div>
+                </Card>
+              )}
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-slate-500">Interaction Type</p>
+                  <Select value={filterType} onValueChange={(value: string) => setFilterType(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All types</SelectItem>
+                      <SelectItem value="comment">Comments</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-slate-500">Fan Name</p>
+                  <Input
+                    placeholder="Search by fan name"
+                    value={filterSearch}
+                    onChange={(event: InputChangeEvent) => setFilterSearch(event.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-slate-500">Post Date</p>
+                  <Select value={filterDate} onValueChange={(value: string) => setFilterDate(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Any date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any date</SelectItem>
+                      <SelectItem value="7d">Last 7 days</SelectItem>
+                      <SelectItem value="30d">Last 30 days</SelectItem>
+                      <SelectItem value="90d">Last 90 days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {isYouTubeLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <Card key={index} className="p-4 border-red-100">
+                      <div className="flex gap-4">
+                        <Skeleton className="h-20 w-20 rounded-lg" />
+                        <div className="flex-1 space-y-3">
+                          <Skeleton className="h-4 w-1/3" />
+                          <Skeleton className="h-3 w-2/3" />
+                          <Skeleton className="h-3 w-full" />
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : youtubePosts.length === 0 ? (
+                <Card className="p-8 border-dashed border-red-200 text-center bg-white">
+                  <Youtube className="w-10 h-10 mx-auto text-red-400 mb-4" />
+                  <h3 className="text-slate-900 font-semibold mb-2">No YouTube videos synced yet</h3>
+                  <p className="text-slate-500 mb-4">
+                    Sync your YouTube channel to start tracking engagement automatically.
+                  </p>
+                  <Button
+                    className="bg-red-500 text-white hover:bg-red-600"
+                    disabled={isYouTubeSyncing}
+                    onClick={() => syncYouTube(true, undefined, effectiveYouTubeAccountId)}
+                  >
+                    {isYouTubeSyncing ? 'Syncing…' : 'Sync YouTube'}
+                  </Button>
+                </Card>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {youtubeFilteredPosts.map((post: SocialPost) => renderPostCard(post))}
                 </div>
               )}
             </>

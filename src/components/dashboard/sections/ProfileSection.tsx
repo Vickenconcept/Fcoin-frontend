@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -19,7 +19,7 @@ type ProviderCard = {
   icon: any;
   color: string;
   connectLabel: string;
-  variant: 'facebook' | 'instagram' | 'tiktok' | 'coming-soon';
+  variant: 'facebook' | 'instagram' | 'tiktok' | 'youtube' | 'coming-soon';
   description?: string;
 };
 
@@ -51,8 +51,10 @@ const SOCIAL_PROVIDER_CARDS: ProviderCard[] = [
     platform: 'YouTube',
     icon: Youtube,
     color: 'bg-red-100 text-red-600',
-    connectLabel: 'Coming Soon',
-    variant: 'coming-soon',
+    connectLabel: 'Connect YouTube',
+    variant: 'youtube',
+    description:
+      'Connect your YouTube channel to sync videos, comments, and engagement metrics automatically.',
   },
   {
     key: 'tiktok',
@@ -74,6 +76,7 @@ export function ProfileSection() {
   const {
     accountsMap,
     instagramAccounts,
+    youtubeAccounts,
     tiktokCreatorAccounts,
     tiktokFanAccounts,
     isLoading,
@@ -87,6 +90,7 @@ export function ProfileSection() {
     connectInstagram,
     connectTikTokCreator,
     connectTikTokFan,
+    connectYouTube,
     disconnect,
   } = useSocialAccounts();
   const [isFacebookManagerOpen, setIsFacebookManagerOpen] = useState(false);
@@ -231,6 +235,20 @@ export function ProfileSection() {
 
   const providers = useMemo(() => SOCIAL_PROVIDER_CARDS, []);
 
+  const handleDisconnectTikTok = useCallback(() => {
+    if (tiktokCreatorAccounts.length > 0) {
+      disconnect('tiktok').catch(() => {});
+      return;
+    }
+
+    if (tiktokFanAccounts.length > 0) {
+      disconnect('tiktok_fan').catch(() => {});
+      return;
+    }
+
+    disconnect('tiktok').catch(() => {});
+  }, [disconnect, tiktokCreatorAccounts.length, tiktokFanAccounts.length]);
+
   return (
     <div className="space-y-6">
       {pendingRecovery && (
@@ -344,17 +362,23 @@ export function ProfileSection() {
             const isFacebook = provider.variant === 'facebook';
             const isInstagram = provider.variant === 'instagram';
             const isTikTok = provider.variant === 'tiktok';
+            const isYouTube = provider.variant === 'youtube';
             const primaryAccount = isInstagram
               ? instagramAccounts[0]
               : isTikTok
               ? tiktokCreatorAccounts[0] ?? tiktokFanAccounts[0]
+              : isYouTube
+              ? youtubeAccounts[0]
               : accountsMap[provider.provider];
             const tiktokCreatorCount = tiktokCreatorAccounts.length;
             const tiktokFanCount = tiktokFanAccounts.length;
+            const youtubeCount = youtubeAccounts.length;
             const isConnected = isInstagram
               ? instagramAccounts.length > 0
               : isTikTok
               ? tiktokCreatorCount > 0 || tiktokFanCount > 0
+              : isYouTube
+              ? youtubeCount > 0
               : Boolean(primaryAccount);
 
             const handleDisconnectInstagram = () => {
@@ -473,7 +497,7 @@ export function ProfileSection() {
                             variant="outline"
                             size="sm"
                             disabled={isLoading || isConnecting}
-                            className="border-sky-200 text-sky-600 hover:bg-sky-50"
+                            className="border-sky-200 text-sky-600 hover:bg-sky-50 w-auto"
                             onClick={() => connectTikTokCreator().catch(() => {})}
                           >
                             {isConnecting ? 'Connecting…' : 'Connect Creator'}
@@ -482,10 +506,40 @@ export function ProfileSection() {
                             variant="outline"
                             size="sm"
                             disabled={isLoading || isConnecting}
-                            className="border-sky-200 text-sky-600 hover:bg-sky-50"
+                            className="border-sky-200 text-sky-600 hover:bg-sky-50 w-auto"
                             onClick={() => connectTikTokFan().catch(() => {})}
                           >
                             {isConnecting ? 'Connecting…' : 'Connect Fan'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-200 hover:bg-red-50 w-auto"
+                            disabled={isLoading || isConnecting}
+                            onClick={handleDisconnectTikTok}
+                          >
+                            Disconnect
+                          </Button>
+                        </div>
+                      ) : isYouTube ? (
+                        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="bg-red-500 text-white hover:bg-red-600 w-auto"
+                            disabled={isLoading || isConnecting}
+                            onClick={() => connectYouTube().catch(() => {})}
+                          >
+                            {isConnecting ? 'Reconnecting…' : 'Reconnect'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            disabled={isLoading || isConnecting}
+                            onClick={() => (primaryAccount ? disconnect('youtube', primaryAccount.id).catch(() => {}) : disconnect('youtube').catch(() => {}))}
+                          >
+                            Disconnect
                           </Button>
                         </div>
                       ) : (
@@ -536,7 +590,7 @@ export function ProfileSection() {
                       <div className="flex flex-col gap-2 sm:flex-row">
                         <Button
                           size="sm"
-                          className="bg-sky-500 text-white hover:bg-sky-600"
+                          className="bg-sky-500 text-white hover:bg-sky-600 w-auto"
                           disabled={isLoading || isConnecting}
                           onClick={() => connectTikTokCreator().catch(() => {})}
                         >
@@ -545,13 +599,27 @@ export function ProfileSection() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-sky-200 text-sky-600 hover:bg-sky-50"
+                          className="border-sky-200 text-sky-600 hover:bg-sky-50 w-auto"
                           disabled={isLoading || isConnecting}
                           onClick={() => connectTikTokFan().catch(() => {})}
                         >
                           {isConnecting ? 'Connecting…' : 'Connect as Fan'}
                         </Button>
                       </div>
+                      {provider.description && (
+                        <p className="text-xs text-slate-500">{provider.description}</p>
+                      )}
+                    </div>
+                  ) : isYouTube ? (
+                    <div className="flex flex-col gap-3">
+                      <Button
+                        size="sm"
+                        className="bg-red-500 text-white hover:bg-red-600 w-auto"
+                        disabled={isLoading || isConnecting}
+                        onClick={() => connectYouTube().catch(() => {})}
+                      >
+                        {isConnecting ? 'Connecting…' : provider.connectLabel}
+                      </Button>
                       {provider.description && (
                         <p className="text-xs text-slate-500">{provider.description}</p>
                       )}
@@ -622,20 +690,12 @@ export function ProfileSection() {
                       <div className="space-y-1">
                         <p className="text-xs font-semibold uppercase text-slate-500">Fan Profiles</p>
                         {tiktokFanAccounts.map((entry) => (
-                          <div key={entry.id} className="flex items-center justify-between gap-2">
+                          <div key={entry.id} className="flex items-center gap-2">
                             <span className="truncate">
                               {entry.provider_username
                                 ? `${entry.provider_username.startsWith('@') ? '' : '@'}${entry.provider_username}`
                                 : entry.provider_user_id}
                             </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:bg-red-50"
-                              onClick={() => disconnect('tiktok_fan', entry.id).catch(() => {})}
-                            >
-                              Remove
-                            </Button>
                           </div>
                         ))}
                       </div>

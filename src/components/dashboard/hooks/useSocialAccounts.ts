@@ -21,7 +21,7 @@ export type SocialAccount = {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api';
 const API_ORIGIN = new URL(API_BASE_URL).origin;
 
-type ConnectableProvider = 'facebook' | 'instagram' | 'tiktok';
+type ConnectableProvider = 'facebook' | 'instagram' | 'tiktok' | 'youtube';
 
 type ConnectOptions = {
   mode?: 'profile' | 'pages' | 'creator' | 'fan';
@@ -31,6 +31,7 @@ const providerLabels: Record<ConnectableProvider, string> = {
   facebook: 'Facebook',
   instagram: 'Instagram',
   tiktok: 'TikTok',
+  youtube: 'YouTube',
 };
 
 export function useSocialAccounts() {
@@ -181,6 +182,8 @@ export function useSocialAccounts() {
               ? 'TikTok creator connected.'
               : payload.provider === 'instagram'
               ? 'Instagram connected.'
+              : payload.provider === 'youtube'
+              ? 'YouTube channel connected.'
               : payload.message ?? `${providerLabel} connected.`;
 
           toast.success(connectionLabel);
@@ -331,10 +334,15 @@ export function useSocialAccounts() {
     return accounts.filter((account) => account.provider === 'tiktok_fan');
   }, [accounts]);
 
+  const youtubeAccounts = useMemo(() => {
+    return accounts.filter((account) => account.provider === 'youtube');
+  }, [accounts]);
+
   return {
     accounts,
     accountsMap,
     instagramAccounts,
+    youtubeAccounts,
     tiktokCreatorAccounts,
     tiktokFanAccounts,
     isLoading,
@@ -348,6 +356,7 @@ export function useSocialAccounts() {
     connectInstagram: () => connect('instagram'),
     connectTikTokCreator: () => connect('tiktok', { mode: 'creator' }),
     connectTikTokFan: () => connect('tiktok', { mode: 'fan' }),
+    connectYouTube: () => connect('youtube'),
     disconnect,
     reload: load,
   };
