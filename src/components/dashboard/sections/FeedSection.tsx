@@ -36,6 +36,7 @@ import { MentionInput } from '../MentionInput';
 import { MentionText } from '../MentionText';
 import { NotificationPanel } from '../NotificationPanel';
 import { useNotifications } from '../hooks/useNotifications';
+import { ShareModal } from '../ShareModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function FeedSection() {
@@ -65,6 +66,8 @@ export function FeedSection() {
   const [postDetailReplyingTo, setPostDetailReplyingTo] = useState<string | null>(null);
   const [postDetailReplyContent, setPostDetailReplyContent] = useState<Record<string, string>>({});
   const [postDetailNewComment, setPostDetailNewComment] = useState('');
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [postToShare, setPostToShare] = useState<FeedPost | null>(null);
   const { unreadCount } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -556,37 +559,116 @@ export function FeedSection() {
                 </div>
               </div>
 
-              {/* Post Content */}
-              {post.content && (
-                <p className="text-black mb-4 whitespace-pre-wrap">
-                  <MentionText text={post.content} />
-                </p>
+              {/* Share Header - if this is a shared post */}
+              {post.shared_post && (
+                <div className="mb-3 p-3 bg-gray-50 rounded-lg border-l-4 border-orange-500">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Share2 className="w-4 h-4 text-orange-500" />
+                    <span className="text-sm font-semibold text-black">
+                      {post.user.display_name || post.user.username} shared a post
+                    </span>
+                  </div>
+                  {post.content && (
+                    <p className="text-sm text-gray-700 mb-2">
+                      <MentionText text={post.content} />
+                    </p>
+                  )}
+                </div>
               )}
 
-              {/* Post Media */}
-              {post.media.length > 0 && (
-                <div className="mb-4 space-y-2">
-                  {post.media.map((media) => (
-                    <div key={media.id} className="rounded-lg overflow-hidden">
-                      {media.type === 'image' ? (
-                        <img
-                          src={media.url}
-                          alt="Post media"
-                          className="w-full max-h-96 object-cover"
-                        />
-                      ) : (
-                        <div className="relative">
-                          <video
-                            src={media.url}
-                            controls
-                            className="w-full max-h-96"
-                            poster={media.thumbnail_url || undefined}
-                          />
-                        </div>
-                      )}
+              {/* Post Content */}
+              {post.shared_post ? (
+                // Show shared post content in an embedded card
+                <div className="border rounded-lg p-4 bg-white">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Avatar>
+                      <AvatarImage
+                        src={post.shared_post.user.avatar_url || undefined}
+                        alt={post.shared_post.user.display_name || post.shared_post.user.username}
+                      />
+                      <AvatarFallback>
+                        {(post.shared_post.user.display_name || post.shared_post.user.username).charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-black">
+                          {post.shared_post.user.display_name || post.shared_post.user.username}
+                        </span>
+                        {post.shared_post.user.verified_creator && (
+                          <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+                            Verified
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-sm text-gray-500">{formatTime(post.shared_post.created_at)}</span>
                     </div>
-                  ))}
+                  </div>
+                  {post.shared_post.content && (
+                    <p className="text-black mb-4 whitespace-pre-wrap">
+                      <MentionText text={post.shared_post.content} />
+                    </p>
+                  )}
+                  {post.shared_post.media.length > 0 && (
+                    <div className="mb-4 space-y-2">
+                      {post.shared_post.media.map((media) => (
+                        <div key={media.id} className="rounded-lg overflow-hidden">
+                          {media.type === 'image' ? (
+                            <img
+                              src={media.url}
+                              alt="Post media"
+                              className="w-full max-h-96 object-cover"
+                            />
+                          ) : (
+                            <div className="relative">
+                              <video
+                                src={media.url}
+                                controls
+                                className="w-full max-h-96"
+                                poster={media.thumbnail_url || undefined}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <>
+                  {/* Regular post content */}
+                  {post.content && (
+                    <p className="text-black mb-4 whitespace-pre-wrap">
+                      <MentionText text={post.content} />
+                    </p>
+                  )}
+
+                  {/* Post Media */}
+                  {post.media.length > 0 && (
+                    <div className="mb-4 space-y-2">
+                      {post.media.map((media) => (
+                        <div key={media.id} className="rounded-lg overflow-hidden">
+                          {media.type === 'image' ? (
+                            <img
+                              src={media.url}
+                              alt="Post media"
+                              className="w-full max-h-96 object-cover"
+                            />
+                          ) : (
+                            <div className="relative">
+                              <video
+                                src={media.url}
+                                controls
+                                className="w-full max-h-96"
+                                poster={media.thumbnail_url || undefined}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Post Actions */}
@@ -615,8 +697,10 @@ export function FeedSection() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => sharePost(post.id)}
-                  disabled={isSharing === post.id}
+                  onClick={() => {
+                    setPostToShare(post);
+                    setShareModalOpen(true);
+                  }}
                   className="text-gray-600"
                 >
                   <Share2 className="w-5 h-5 mr-2" />
@@ -1085,6 +1169,24 @@ export function FeedSection() {
         onPostClick={handleOpenPostDetail}
       />
 
+      {/* Share Modal */}
+      {postToShare && (
+        <ShareModal
+          isOpen={shareModalOpen}
+          onClose={() => {
+            setShareModalOpen(false);
+            setPostToShare(null);
+          }}
+          post={postToShare}
+          onShareToTimeline={async (comment?: string) => {
+            const result = await sharePost(postToShare.id, comment, true);
+            if (result) {
+              // Post will be added to feed automatically by sharePost
+            }
+          }}
+        />
+      )}
+
       {/* Post Detail Modal */}
       <Dialog open={postDetailModalOpen} onOpenChange={(open: boolean) => {
         if (!open) {
@@ -1227,8 +1329,10 @@ export function FeedSection() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => sharePost(postDetailPost.id)}
-                    disabled={isSharing === postDetailPost.id}
+                    onClick={() => {
+                      setPostToShare(postDetailPost);
+                      setShareModalOpen(true);
+                    }}
                     className="text-gray-600"
                   >
                     <Share2 className="w-5 h-5 mr-2" />

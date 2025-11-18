@@ -26,6 +26,7 @@ export type FeedPost = {
     thumbnail_url: string | null;
     metadata: Record<string, unknown> | null;
   }>;
+  shared_post?: FeedPost; // Recursive type for shared posts
   created_at: string;
   updated_at: string;
 };
@@ -244,14 +245,18 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
     }
   }, []);
 
-  const sharePost = useCallback(async (postId: string, comment?: string) => {
+  const sharePost = useCallback(async (postId: string, comment?: string, shareToTimeline = false) => {
     setIsSharing(postId);
     try {
-      const response = await apiClient.request<{ id: string; shares_count: number }>(
+      const response = await apiClient.request<{ 
+        id: string; 
+        shares_count: number;
+        shared_post?: FeedPost;
+      }>(
         `/v1/feed/posts/${postId}/share`,
         {
           method: 'POST',
-          body: { comment },
+          body: { comment, share_to_timeline: shareToTimeline },
         }
       );
 
@@ -263,13 +268,26 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
               : p
           )
         );
-        toast.success('Post shared successfully');
+        
+        // If shared to timeline, add the new post to the feed
+        if (shareToTimeline && response.data.shared_post) {
+          setPosts((prev) => [response.data!.shared_post!, ...prev]);
+        }
+        
+        if (shareToTimeline) {
+          toast.success('Post shared to your timeline!');
+        } else {
+          toast.success('Post shared successfully');
+        }
+        return response.data;
       } else {
         toast.error(response.errors?.[0]?.detail || 'Failed to share post');
+        return null;
       }
     } catch (error) {
       console.error('Share error:', error);
       toast.error('Failed to share post');
+      return null;
     } finally {
       setIsSharing(null);
     }
