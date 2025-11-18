@@ -25,6 +25,12 @@ export function useRecentEngagements(limit = 6): UseRecentEngagementsReturn {
   const [isLoading, setIsLoading] = useState(false);
 
   const load = useCallback(async () => {
+    if (limit === 0) {
+      setEngagements([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await apiClient.request<{ data: any[] }>(

@@ -13,6 +13,7 @@ import {
   Wallet as WalletIcon,
   X,
   ShieldCheck,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -26,6 +27,7 @@ import { MyCoinSection } from './sections/MyCoinSection';
 import { WalletSection } from './sections/WalletSection';
 import { ProfileSection } from './sections/ProfileSection';
 import { SocialInsightsSection } from './sections/SocialInsightsSection';
+import { FeedSection } from './sections/FeedSection';
 import { LaunchCoinModal } from './LaunchCoinModal';
 import { useRewardRules } from './hooks/useRewardRules';
 import { useCoins } from './hooks/useCoins';
@@ -36,9 +38,9 @@ type ClickEvent = {
   stopPropagation: () => void;
 };
 
-type TabType = 'home' | 'discover' | 'my-coin' | 'wallet' | 'profile' | 'social-insights';
+type TabType = 'feed' | 'home' | 'discover' | 'my-coin' | 'wallet' | 'profile' | 'social-insights';
 
-const allowedTabs: TabType[] = ['home', 'discover', 'my-coin', 'wallet', 'profile', 'social-insights'];
+const allowedTabs: TabType[] = ['feed', 'home', 'discover', 'my-coin', 'wallet', 'profile', 'social-insights'];
 
 export default function DashboardLayout() {
   const { user, logout, refreshUser } = useAuth();
@@ -49,6 +51,16 @@ export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [launchCoinModalOpen, setLaunchCoinModalOpen] = useState(false);
   const [allocateModalOpen, setAllocateModalOpen] = useState(false);
+
+  const activeTab: TabType = allowedTabs.includes((section ?? 'home') as TabType)
+    ? ((section ?? 'home') as TabType)
+    : 'home';
+
+  // Only load data for tabs that need it
+  const needsStats = activeTab === 'home' || activeTab === 'my-coin' || activeTab === 'wallet';
+  const needsRewardRules = activeTab === 'my-coin';
+  const needsCoins = activeTab === 'my-coin' || activeTab === 'social-insights';
+  const needsEngagements = activeTab === 'home';
 
   const {
     walletBalance,
@@ -61,7 +73,10 @@ export default function DashboardLayout() {
     isLoading: isStatsLoading,
     refresh: refreshStats,
     transactions: walletTransactions,
-  } = useDashboardStats(user?.id, user?.default_coin_symbol ?? 'FCN');
+  } = useDashboardStats(
+    needsStats ? user?.id : undefined,
+    needsStats ? (user?.default_coin_symbol ?? 'FCN') : 'FCN'
+  );
   const {
     rules: rewardRules,
     isLoading: isRewardRulesLoading,
@@ -77,7 +92,7 @@ export default function DashboardLayout() {
     engagements: recentEngagements,
     isLoading: isRecentEngagementsLoading,
     reload: reloadRecentEngagements,
-  } = useRecentEngagements(6);
+  } = useRecentEngagements(needsEngagements ? 6 : 0);
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
 
@@ -151,10 +166,6 @@ export default function DashboardLayout() {
 
   const isEarnedCoinsLoading = isStatsLoading && earnedCoinEntries.length === 0;
 
-  const activeTab: TabType = allowedTabs.includes((section ?? 'home') as TabType)
-    ? ((section ?? 'home') as TabType)
-    : 'home';
-
   const goToTab = (tab: TabType) => {
     navigate(`/dashboard/${tab}`);
   };
@@ -210,6 +221,18 @@ export default function DashboardLayout() {
         </div>
 
         <nav className="space-y-2 flex-1">
+          <button
+            onClick={() => goToTab('feed')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              activeTab === 'feed'
+                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                : 'text-slate-600 hover:bg-purple-50'
+            }`}
+          >
+            <MessageSquare className="w-5 h-5" />
+            <span>Feed</span>
+          </button>
+
           <button
             onClick={() => goToTab('home')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
@@ -314,6 +337,7 @@ export default function DashboardLayout() {
 
             <nav className="space-y-2">
               {[
+                { tab: 'feed' as TabType, icon: MessageSquare, label: 'Feed' },
                 { tab: 'home' as TabType, icon: Home, label: 'Home' },
                 { tab: 'discover' as TabType, icon: Search, label: 'Discover' },
                 { tab: 'my-coin' as TabType, icon: Coins, label: 'My Coin' },
@@ -404,6 +428,8 @@ export default function DashboardLayout() {
 
         {/* Content Area */}
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+          {activeTab === 'feed' && <FeedSection />}
+
           {activeTab === 'home' && (
             <HomeSection
               poolBalanceDisplay={poolBalanceDisplay}
