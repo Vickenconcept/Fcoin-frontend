@@ -10,7 +10,20 @@ import { MentionText } from '@/components/dashboard/MentionText';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/lib/apiClient';
 import type { FeedPost } from '@/components/dashboard/hooks/useFeed';
-import { ArrowLeft, CheckCircle2, Users, Users2, Globe, Users as UsersIcon, Lock, Trash2, Coins } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Users,
+  Users2,
+  Globe,
+  Users as UsersIcon,
+  Lock,
+  Trash2,
+  Coins,
+  MapPin,
+  Link2,
+  Share2,
+} from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import toast from 'react-hot-toast';
 
@@ -22,6 +35,10 @@ type ProfileData = {
   verified_creator: boolean;
   default_coin_symbol: string | null;
   user_type?: string | null;
+  profile_bio?: string | null;
+  profile_location?: string | null;
+  profile_links?: Array<{ label: string; url: string }> | null;
+  profile_url?: string | null;
   followers_count: number;
   following_count: number;
   posts_count: number;
@@ -271,6 +288,26 @@ export default function UserProfilePage() {
     ];
   }, [profile]);
 
+  const profileLink = useMemo(() => {
+    if (profile?.profile_url) {
+      return profile.profile_url;
+    }
+
+    if (profile?.username && typeof window !== 'undefined') {
+      return `${window.location.origin}/${profile.username}`;
+    }
+
+    return profile?.username ? `/${profile.username}` : '';
+  }, [profile?.profile_url, profile?.username]);
+
+  const handleCopyProfileLink = useCallback(() => {
+    if (!profileLink) return;
+    navigator.clipboard.writeText(profileLink).then(
+      () => toast.success('Profile link copied!'),
+      () => toast.error('Unable to copy link'),
+    );
+  }, [profileLink]);
+
   if (RESERVED_USERNAMES.has(cleanedUsername)) {
     return <Navigate to="/dashboard/feed" replace />;
   }
@@ -327,16 +364,32 @@ export default function UserProfilePage() {
                     <p className="text-sm text-slate-500">
                       Joined {formatTime(profile.joined_at)}
                     </p>
-                    <div className="mt-2 text-sm text-slate-600">
-                      Default coin:{' '}
-                      <span className="font-semibold text-slate-900">
-                        {profile.default_coin_symbol || 'FCN'}
-                      </span>
-                    </div>
                   </div>
                 </div>
-                {!profile.is_current_user && (
-                  <div className="flex gap-3">
+                <div className="flex flex-col gap-2 text-sm text-slate-500">
+                  {profile.profile_location && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-slate-400" />
+                      <span>{profile.profile_location}</span>
+                    </div>
+                  )}
+                  <div>
+                    Default coin:{' '}
+                    <span className="font-semibold text-slate-900">
+                      {profile.default_coin_symbol || 'FCN'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-3 flex-wrap">
+                  <Button
+                    variant="outline"
+                    onClick={handleCopyProfileLink}
+                    className="flex items-center gap-2 text-slate-600"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Share profile
+                  </Button>
+                  {!profile.is_current_user && (
                     <Button
                       className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 min-w-[160px]"
                       onClick={handleFollowToggle}
@@ -348,8 +401,8 @@ export default function UserProfilePage() {
                         ? 'Following'
                         : 'Follow & earn'}
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </Card>
 
@@ -366,6 +419,33 @@ export default function UserProfilePage() {
                 </Card>
               ))}
             </div>
+
+            {profile.profile_bio && (
+              <Card className="p-6 bg-white border-purple-100">
+                <h2 className="text-lg font-semibold text-slate-900 mb-3">About</h2>
+                <p className="text-slate-700 whitespace-pre-wrap">{profile.profile_bio}</p>
+              </Card>
+            )}
+
+            {profile.profile_links && profile.profile_links.length > 0 && (
+              <Card className="p-6 bg-white border-purple-100">
+                <h2 className="text-lg font-semibold text-slate-900 mb-3">Links</h2>
+                <div className="flex flex-wrap gap-3">
+                  {profile.profile_links.map((link) => (
+                    <a
+                      key={`${link.label}-${link.url}`}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-4 py-2 text-sm text-purple-700 hover:bg-purple-100"
+                    >
+                      <Link2 className="w-4 h-4" />
+                      <span>{link.label}</span>
+                    </a>
+                  ))}
+                </div>
+              </Card>
+            )}
 
             {profile.coins.length > 0 && (
               <Card className="p-6 bg-white border-purple-100">

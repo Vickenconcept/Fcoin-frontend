@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
   AlertTriangle,
@@ -13,6 +14,11 @@ import {
   Loader2,
   Music2,
   Youtube,
+  MapPin,
+  Link2,
+  Plus,
+  X,
+  Copy,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSocialAccounts } from '../hooks/useSocialAccounts';
@@ -82,6 +88,16 @@ const SOCIAL_PROVIDER_CARDS: ProviderCard[] = [
 ];
 
 type TextChangeEvent = { target: { value: string } };
+type EditableProfileLink = { id: string; label: string; url: string };
+
+const generateLinkId = () => Math.random().toString(36).slice(2, 11);
+
+const toEditableLinks = (links?: Array<{ label?: string; url?: string }>): EditableProfileLink[] =>
+  (links ?? []).map((link, index) => ({
+    id: `${link.label ?? 'link'}-${index}-${generateLinkId()}`,
+    label: link.label ?? '',
+    url: link.url ?? '',
+  }));
 
 export function ProfileSection() {
   const { user, refreshUser } = useAuth();
@@ -118,6 +134,9 @@ export function ProfileSection() {
   const [isTikTokManagerOpen, setIsTikTokManagerOpen] = useState(false);
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
   const [username, setUsername] = useState(user?.username ?? '');
+  const [profileBio, setProfileBio] = useState(user?.profile_bio ?? '');
+  const [profileLocation, setProfileLocation] = useState(user?.profile_location ?? '');
+  const [profileLinks, setProfileLinks] = useState<EditableProfileLink[]>(toEditableLinks(user?.profile_links));
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'self' | 'unavailable' | 'error'>('idle');
   const [usernameStatusMessage, setUsernameStatusMessage] = useState<string>('');
@@ -125,16 +144,38 @@ export function ProfileSection() {
   useEffect(() => {
     setDisplayName(user?.display_name ?? '');
     setUsername(user?.username ?? '');
+    setProfileBio(user?.profile_bio ?? '');
+    setProfileLocation(user?.profile_location ?? '');
+    setProfileLinks(toEditableLinks(user?.profile_links));
     setUsernameStatus('idle');
     setUsernameStatusMessage('');
-  }, [user?.display_name, user?.username]);
+  }, [user?.display_name, user?.username, user?.profile_bio, user?.profile_location, user?.profile_links]);
 
   const originalDisplayName = user?.display_name ?? '';
   const originalUsername = user?.username ?? '';
   const trimmedDisplayName = displayName.trim();
   const trimmedUsername = username.trim();
+  const originalProfileBio = user?.profile_bio ?? '';
+  const originalProfileLocation = user?.profile_location ?? '';
+  const originalProfileLinks = user?.profile_links ?? [];
+  const trimmedBio = profileBio.trim();
+  const trimmedLocation = profileLocation.trim();
+  const sanitizedProfileLinks = useMemo(
+    () =>
+      profileLinks
+        .map((link) => ({
+          label: link.label.trim(),
+          url: link.url.trim(),
+        }))
+        .filter((link) => link.label && link.url),
+    [profileLinks],
+  );
   const hasProfileChanges =
-    trimmedDisplayName !== originalDisplayName || trimmedUsername !== originalUsername;
+    trimmedDisplayName !== originalDisplayName ||
+    trimmedUsername !== originalUsername ||
+    trimmedBio !== originalProfileBio ||
+    trimmedLocation !== originalProfileLocation ||
+    JSON.stringify(sanitizedProfileLinks) !== JSON.stringify(originalProfileLinks);
 
   const notificationRows: Array<{
     key: PreferenceKey;
@@ -157,6 +198,38 @@ export function ProfileSection() {
       description: 'Let me know when engagement rewards are delivered.',
     },
   ];
+
+  const canAddLink = profileLinks.length < 5;
+
+  const handleAddLink = () => {
+    if (!canAddLink) return;
+    setProfileLinks((prev) => [...prev, { id: generateLinkId(), label: '', url: '' }]);
+  };
+
+  const handleLinkChange = (id: string, field: 'label' | 'url', value: string) => {
+    setProfileLinks((prev) =>
+      prev.map((link) => (link.id === id ? { ...link, [field]: value } : link)),
+    );
+  };
+
+  const handleRemoveLink = (id: string) => {
+    setProfileLinks((prev) => prev.filter((link) => link.id !== id));
+  };
+
+  const profilePublicUrl = useMemo(() => {
+    const slug = trimmedUsername || originalUsername;
+    if (!slug) return '';
+    if (typeof window === 'undefined') return `/${slug}`;
+    return `${window.location.origin}/${slug}`;
+  }, [trimmedUsername, originalUsername]);
+
+  const handleCopyProfileUrl = useCallback(() => {
+    if (!profilePublicUrl) return;
+    navigator.clipboard.writeText(profilePublicUrl).then(
+      () => toast.success('Profile link copied!'),
+      () => toast.error('Unable to copy link'),
+    );
+  }, [profilePublicUrl]);
 
   useEffect(() => {
     const next = trimmedUsername;
@@ -242,7 +315,8 @@ export function ProfileSection() {
     setIsSavingProfile(true);
 
     try {
-    const payload: Record<string, string | null> = {};
+    const payload: Record<string, string | null | undefined | Array<{ label: string; url: string }>> =
+      {};
 
       if (trimmedDisplayName !== originalDisplayName) {
         payload.display_name = trimmedDisplayName || null;
@@ -250,6 +324,18 @@ export function ProfileSection() {
 
       if (trimmedUsername !== originalUsername) {
         payload.username = trimmedUsername;
+      }
+
+      if (trimmedBio !== originalProfileBio) {
+        payload.profile_bio = trimmedBio || null;
+      }
+
+      if (trimmedLocation !== originalProfileLocation) {
+        payload.profile_location = trimmedLocation || null;
+      }
+
+      if (JSON.stringify(sanitizedProfileLinks) !== JSON.stringify(originalProfileLinks)) {
+        payload.profile_links = sanitizedProfileLinks;
       }
 
       const response = await apiClient.request('/v1/profile', {
@@ -377,6 +463,87 @@ export function ProfileSection() {
             </div>
           </div>
         </div>
+        <div className="grid gap-4">
+          <div>
+            <p className="text-slate-600 mb-1">Bio</p>
+            <Textarea
+              value={profileBio}
+              onChange={(event: TextChangeEvent) => setProfileBio(event.target.value)}
+              placeholder="Tell fans about your community, posting cadence, or reward rules."
+              maxLength={1000}
+              disabled={isSavingProfile}
+              className="min-h-[120px]"
+            />
+            <div className="text-xs text-slate-500 mt-1 text-right">{profileBio.length}/1000</div>
+          </div>
+          <div>
+            <p className="text-slate-600 mb-1">Location</p>
+            <Input
+              value={profileLocation}
+              onChange={(event: TextChangeEvent) => setProfileLocation(event.target.value)}
+              placeholder="City, Country"
+              maxLength={120}
+              disabled={isSavingProfile}
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-slate-600">Links</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddLink}
+                disabled={!canAddLink}
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add link
+              </Button>
+            </div>
+            {profileLinks.length === 0 && (
+              <p className="text-sm text-slate-500 mb-3">Share your website or top socials.</p>
+            )}
+            <div className="space-y-3">
+              {profileLinks.map((link) => (
+                <div
+                  key={link.id}
+                  className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3"
+                >
+                  <Input
+                    value={link.label}
+                    onChange={(event: TextChangeEvent) =>
+                      handleLinkChange(link.id, 'label', event.target.value)
+                    }
+                    placeholder="Label (e.g., Website)"
+                    maxLength={40}
+                    disabled={isSavingProfile}
+                    className="md:w-48"
+                  />
+                  <Input
+                    value={link.url}
+                    onChange={(event: TextChangeEvent) =>
+                      handleLinkChange(link.id, 'url', event.target.value)
+                    }
+                    placeholder="https://example.com"
+                    maxLength={255}
+                    disabled={isSavingProfile}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveLink(link.id)}
+                    disabled={isSavingProfile}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
         <Button
           className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
           onClick={handleSaveProfile}
@@ -390,6 +557,77 @@ export function ProfileSection() {
         >
           {isSavingProfile ? 'Saving…' : 'Save Changes'}
         </Button>
+      </Card>
+
+      <Card className="p-6 border-dashed border-purple-200 bg-purple-50/30">
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <div>
+            <h3 className="text-slate-900 font-semibold">Public profile preview</h3>
+            <p className="text-sm text-slate-600">
+              Fans see this at {profilePublicUrl || 'your profile link'}.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleCopyProfileUrl} className="flex gap-2">
+              <Copy className="w-4 h-4" />
+              Copy link
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => profilePublicUrl && window.open(profilePublicUrl, '_blank')}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700"
+              disabled={!profilePublicUrl}
+            >
+              View live
+            </Button>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-white bg-white/70 p-5 space-y-4 shadow-inner">
+          <div className="flex items-start gap-4">
+            <div className="w-16 h-16 rounded-full bg-purple-200 flex items-center justify-center text-xl text-purple-700 font-semibold">
+              {(trimmedDisplayName || trimmedUsername || originalUsername || 'FC')
+                .slice(0, 2)
+                .toUpperCase()}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold text-slate-900 text-lg">
+                  {trimmedDisplayName || originalDisplayName || originalUsername}
+                </p>
+                <Badge className="bg-orange-50 text-orange-600 border-orange-200 text-xs">
+                  @{trimmedUsername || originalUsername}
+                </Badge>
+              </div>
+              {trimmedLocation && (
+                <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
+                  <MapPin className="w-4 h-4 text-slate-400" />
+                  <span>{trimmedLocation}</span>
+                </div>
+              )}
+              <p className="text-xs text-slate-500 mt-2">
+                Default coin: {user?.default_coin_symbol || 'FCN'}
+              </p>
+            </div>
+          </div>
+          {trimmedBio && (
+            <p className="text-slate-700 whitespace-pre-wrap text-sm border-t border-slate-100 pt-3">
+              {trimmedBio}
+            </p>
+          )}
+          {sanitizedProfileLinks.length > 0 && (
+            <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+              {sanitizedProfileLinks.map((link) => (
+                <span
+                  key={`${link.label}-${link.url}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-sm text-purple-700"
+                >
+                  <Link2 className="w-3 h-3" />
+                  {link.label}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </Card>
 
       <Card className="p-6 border-purple-100 bg-white">

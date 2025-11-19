@@ -10,6 +10,9 @@ export type AuthUser = {
   default_coin_symbol: string;
   token_capabilities?: string[];
   user_type?: string;
+  profile_bio?: string | null;
+  profile_location?: string | null;
+  profile_links?: Array<{ label: string; url: string }> | null;
 };
 
 export type AuthPayload = {
