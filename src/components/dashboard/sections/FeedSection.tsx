@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useRef, useEffect, useCallback, useMemo, MouseEvent as ReactMouseEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,7 @@ import { MentionText } from '../MentionText';
 import { NotificationPanel } from '../NotificationPanel';
 import { useNotifications } from '../hooks/useNotifications';
 import { ShareModal } from '../ShareModal';
+import { FeedMediaGrid } from '../FeedMediaGrid';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -49,6 +50,7 @@ import { Globe, Users, Lock, Settings, Coins, ChevronDown, ChevronUp, ArrowRight
 
 export function FeedSection() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [sortBy, setSortBy] = useState<'newest' | 'popular'>('newest');
   const [composerOpen, setComposerOpen] = useState(false);
   const [commentModalOpen, setCommentModalOpen] = useState(false);
@@ -68,6 +70,7 @@ export function FeedSection() {
   const [walletCoins, setWalletCoins] = useState<Array<{ coin_symbol: string; balance: number }>>([]);
   const [isWalletCoinsLoading, setIsWalletCoinsLoading] = useState(false);
   const [walletCoinsError, setWalletCoinsError] = useState<string | null>(null);
+  const [rewardToggleLoading, setRewardToggleLoading] = useState<string | null>(null);
   const [postCreationStep, setPostCreationStep] = useState<1 | 2 | 3>(1);
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -92,6 +95,14 @@ export function FeedSection() {
   const [postToShare, setPostToShare] = useState<FeedPost | null>(null);
   const { unreadCount } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const openUserProfile = useCallback(
+    (username?: string | null) => {
+      if (!username) return;
+      navigate(`/${username}`);
+    },
+    [navigate],
+  );
 
   // Check URL for post ID on mount
   useEffect(() => {
@@ -176,6 +187,24 @@ export function FeedSection() {
   const selectedRewardCoinBalance = useMemo(() => {
     return walletCoins.find((coin) => coin.coin_symbol === rewardCoinSymbol)?.balance ?? 0;
   }, [walletCoins, rewardCoinSymbol]);
+
+  const handleDisableRewards = useCallback(async (postId: string) => {
+    setRewardToggleLoading(postId);
+    try {
+      const updated = await updatePost(postId, { reward_enabled: false });
+      if (updated) {
+        if (postDetailPost?.id === postId) {
+          setPostDetailPost(updated);
+        }
+        toast.success('Rewards disabled for this post');
+      }
+    } catch (error) {
+      console.error('Disable rewards error:', error);
+      toast.error('Failed to disable rewards');
+    } finally {
+      setRewardToggleLoading(null);
+    }
+  }, [updatePost, postDetailPost]);
 
 
   const handleFileUpload = async (file: File) => {
@@ -641,7 +670,10 @@ export function FeedSection() {
               {/* Post Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <Avatar>
+                  <Avatar
+                    className="cursor-pointer"
+                    onClick={() => openUserProfile(post.user.username)}
+                  >
                     <AvatarImage
                       src={post.user.avatar_url || undefined}
                       alt={post.user.display_name || post.user.username}
@@ -652,9 +684,13 @@ export function FeedSection() {
                   </Avatar>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-black">
+                      <button
+                        type="button"
+                        onClick={() => openUserProfile(post.user.username)}
+                        className="font-semibold text-black hover:underline text-left"
+                      >
                         {post.user.display_name || post.user.username}
-                      </span>
+                      </button>
                       {post.user.verified_creator && (
                         <Badge variant="secondary" className="bg-orange-100 text-orange-700">
                           Verified
@@ -746,57 +782,50 @@ export function FeedSection() {
                 // Show shared post content in an embedded card
                 <div className="border rounded-lg p-4 bg-white">
                   <div className="flex items-center gap-3 mb-3">
-                    <Avatar>
+                    <Avatar
+                      className="cursor-pointer"
+                      onClick={() => openUserProfile(post.shared_post!.user.username)}
+                    >
                       <AvatarImage
-                        src={post.shared_post.user.avatar_url || undefined}
-                        alt={post.shared_post.user.display_name || post.shared_post.user.username}
+                        src={post.shared_post!.user.avatar_url || undefined}
+                        alt={post.shared_post!.user.display_name || post.shared_post!.user.username}
                       />
                       <AvatarFallback>
-                        {(post.shared_post.user.display_name || post.shared_post.user.username).charAt(0).toUpperCase()}
+                        {(post.shared_post!.user.display_name || post.shared_post!.user.username)
+                          .charAt(0)
+                          .toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-black">
-                          {post.shared_post.user.display_name || post.shared_post.user.username}
-                        </span>
-                        {post.shared_post.user.verified_creator && (
+                        <button
+                          type="button"
+                          onClick={() => openUserProfile(post.shared_post!.user.username)}
+                          className="font-semibold text-black hover:underline text-left"
+                        >
+                          {post.shared_post!.user.display_name || post.shared_post!.user.username}
+                        </button>
+                        {post.shared_post!.user.verified_creator && (
                           <Badge variant="secondary" className="bg-orange-100 text-orange-700">
                             Verified
                           </Badge>
                         )}
                       </div>
-                      <span className="text-sm text-gray-500">{formatTime(post.shared_post.created_at)}</span>
+                      <span className="text-sm text-gray-500">
+                        {formatTime(post.shared_post!.created_at)}
+                      </span>
                     </div>
                   </div>
                   {post.shared_post.content && (
                     <p className="text-black mb-4 whitespace-pre-wrap">
-                      <MentionText text={post.shared_post.content} />
+                      <MentionText text={post.shared_post!.content} />
                     </p>
                   )}
-                  {post.shared_post.media.length > 0 && (
-                    <div className="mb-4 space-y-2">
-                      {post.shared_post.media.map((media) => (
-                        <div key={media.id} className="rounded-lg overflow-hidden">
-                          {media.type === 'image' ? (
-                            <img
-                              src={media.url}
-                              alt="Post media"
-                              className="w-full max-h-96 object-cover"
-                            />
-                          ) : (
-                            <div className="relative">
-                              <video
-                                src={media.url}
-                                controls
-                                className="w-full max-h-96"
-                                poster={media.thumbnail_url || undefined}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                  {post.shared_post!.media.length > 0 && (
+                    <FeedMediaGrid
+                      media={post.shared_post!.media}
+                      onOpen={() => handleOpenPostDetail(post.shared_post!.id)}
+                    />
                   )}
                 </div>
               ) : (
@@ -810,28 +839,10 @@ export function FeedSection() {
 
                   {/* Post Media */}
                   {post.media.length > 0 && (
-                    <div className="mb-4 space-y-2">
-                      {post.media.map((media) => (
-                        <div key={media.id} className="rounded-lg overflow-hidden">
-                          {media.type === 'image' ? (
-                            <img
-                              src={media.url}
-                              alt="Post media"
-                              className="w-full max-h-96 object-cover"
-                            />
-                          ) : (
-                            <div className="relative">
-                              <video
-                                src={media.url}
-                                controls
-                                className="w-full max-h-96"
-                                poster={media.thumbnail_url || undefined}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                    <FeedMediaGrid
+                      media={post.media}
+                      onOpen={() => handleOpenPostDetail(post.id)}
+                    />
                   )}
                 </>
               )}
@@ -884,6 +895,19 @@ export function FeedSection() {
                 >
                   <LinkIcon className="w-5 h-5 mr-2" />
                 </Button>
+                {post.reward_enabled && post.user.id === user?.id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDisableRewards(post.id)}
+                    disabled={rewardToggleLoading === post.id}
+                    className="text-gray-600"
+                    title="Disable rewards for this post"
+                  >
+                    <Coins className="w-5 h-5 mr-2" />
+                    {rewardToggleLoading === post.id ? 'Disabling...' : 'Disable rewards'}
+                  </Button>
+                )}
                 {user && post.user && String(post.user.id) === String(user.id) && (
                   <Button
                     variant="ghost"
@@ -1504,9 +1528,13 @@ export function FeedSection() {
                     <div className="flex-1">
                       <div className="bg-gray-100 rounded-lg p-3">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-sm text-black">
+                          <button
+                            type="button"
+                            onClick={() => openUserProfile(comment.user.username)}
+                            className="font-semibold text-sm text-black hover:underline text-left"
+                          >
                             {comment.user.display_name || comment.user.username}
-                          </span>
+                          </button>
                           <span className="text-xs text-gray-500">
                             {formatTime(comment.created_at)}
                           </span>
@@ -1586,9 +1614,13 @@ export function FeedSection() {
                               <div className="flex-1">
                                 <div className="bg-gray-100 rounded-lg p-2">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-semibold text-xs text-black">
+                                    <button
+                                      type="button"
+                                      onClick={() => openUserProfile(reply.user.username)}
+                                      className="font-semibold text-xs text-black hover:underline text-left"
+                                    >
                                       {reply.user.display_name || reply.user.username}
-                                    </span>
+                                    </button>
                                     <span className="text-xs text-gray-500">
                                       {formatTime(reply.created_at)}
                                     </span>
@@ -1876,6 +1908,18 @@ export function FeedSection() {
                     <Share2 className="w-5 h-5 mr-2" />
                     {postDetailPost.shares_count}
                   </Button>
+                  {postDetailPost.reward_enabled && postDetailPost.user.id === user?.id && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDisableRewards(postDetailPost.id)}
+                      disabled={rewardToggleLoading === postDetailPost.id}
+                      className="text-gray-600"
+                    >
+                      <Coins className="w-5 h-5 mr-2" />
+                      {rewardToggleLoading === postDetailPost.id ? 'Disabling...' : 'Disable rewards'}
+                    </Button>
+                  )}
                         {postDetailPost.reward_enabled && (
                           <Badge className="ml-auto bg-orange-100 text-orange-700">
                             💰 {postDetailPost.reward_pool} {postDetailPost.reward_coin_symbol ?? 'coins'}

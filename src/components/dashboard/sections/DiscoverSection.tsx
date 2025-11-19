@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
@@ -30,6 +31,7 @@ interface PaginationMeta {
 
 export function DiscoverSection() {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<DiscoverUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -180,6 +182,14 @@ export function DiscoverSection() {
     return `${total} creator${total === 1 ? '' : 's'} rewarding their communities.`;
   }, [pagination, searchTerm]);
 
+  const openProfile = useCallback(
+    (username: string) => {
+      if (!username) return;
+      navigate(`/${username}`);
+    },
+    [navigate],
+  );
+
   return (
     <div className="space-y-6">
       <Card className="p-6 border-purple-100 bg-white">
@@ -237,7 +247,11 @@ export function DiscoverSection() {
           const isLoadingFollow = loadingFollows[user.id] || false;
 
           return (
-            <Card key={user.id} className="p-6 border-purple-100 bg-white hover:shadow-xl transition-shadow">
+            <Card
+              key={user.id}
+              className="p-6 border-purple-100 bg-white hover:shadow-xl transition-shadow cursor-pointer"
+              onClick={() => openProfile(user.username)}
+            >
               <div className="flex items-start gap-4 mb-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center overflow-hidden">
                   {renderAvatar(user)}
@@ -271,7 +285,10 @@ export function DiscoverSection() {
                     ? 'bg-white text-purple-600 hover:bg-purple-50 border border-purple-200'
                     : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white'
                 }`}
-                onClick={() => handleFollow(user.id, isFollowing)}
+                onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                  event.stopPropagation();
+                  handleFollow(user.id, isFollowing);
+                }}
                 disabled={isLoadingFollow || user.id === currentUser?.id}
               >
                 {isLoadingFollow ? (
@@ -288,6 +305,16 @@ export function DiscoverSection() {
                   </>
                 )}
               </Button>
+              <button
+                type="button"
+                className="mt-3 text-sm text-purple-600 hover:underline"
+                onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                  event.stopPropagation();
+                  openProfile(user.username);
+                }}
+              >
+                View profile
+              </button>
             </Card>
           );
         })}

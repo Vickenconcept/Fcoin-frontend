@@ -152,7 +152,7 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
     try {
       const response = await apiClient.request<FeedPost>('/v1/feed/posts', {
         method: 'POST',
-        body: data,
+        body: data as any,
       });
 
       if (response.ok && response.data) {
@@ -211,7 +211,7 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
         `/v1/feed/posts/${postId}/comment`,
         {
           method: 'POST',
-          body: { content, parent_id: parentId },
+          body: { content, parent_id: parentId } as any,
         }
       );
 
@@ -270,7 +270,7 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
         `/v1/feed/posts/${postId}/share`,
         {
           method: 'POST',
-          body: { comment, share_to_timeline: shareToTimeline },
+          body: { comment, share_to_timeline: shareToTimeline } as any,
         }
       );
 
@@ -307,13 +307,25 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
     }
   }, []);
 
-  const updatePost = useCallback(async (postId: string, data: { content?: string; visibility?: string }) => {
+  const updatePost = useCallback(async (postId: string, data: {
+    content?: string;
+    visibility?: string;
+    reward_enabled?: boolean;
+    reward_pool?: number;
+    reward_coin_symbol?: string;
+    reward_rule?: {
+      like?: number;
+      comment?: number;
+      share?: number;
+      per_user_cap?: number;
+    };
+  }) => {
     try {
       const response = await apiClient.request<FeedPost>(
         `/v1/feed/posts/${postId}`,
         {
           method: 'PUT',
-          body: data,
+          body: data as any,
         }
       );
 

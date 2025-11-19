@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface MentionTextProps {
   text: string;
@@ -6,9 +7,11 @@ interface MentionTextProps {
 }
 
 export function MentionText({ text, className = '' }: MentionTextProps) {
+  const navigate = useNavigate();
+
   const parts = useMemo(() => {
     // Split text by mentions (@username)
-    const mentionRegex = /@([a-zA-Z0-9_]+)/g;
+    const mentionRegex = /@([A-Za-z0-9_.]+)/g;
     const parts: Array<{ text: string; isMention: boolean }> = [];
     let lastIndex = 0;
     let match;
@@ -42,6 +45,15 @@ export function MentionText({ text, className = '' }: MentionTextProps) {
     return parts.length > 0 ? parts : [{ text, isMention: false }];
   }, [text]);
 
+  const handleMentionClick = useCallback(
+    (mention: string) => {
+      const username = mention.replace(/^@/, '');
+      if (!username) return;
+      navigate(`/${username}`);
+    },
+    [navigate],
+  );
+
   return (
     <span className={className}>
       {parts.map((part, index) =>
@@ -50,6 +62,7 @@ export function MentionText({ text, className = '' }: MentionTextProps) {
             key={index}
             className="text-blue-600 font-semibold hover:underline cursor-pointer"
             style={{ fontWeight: 600 }}
+            onClick={() => handleMentionClick(part.text)}
           >
             {part.text}
           </span>

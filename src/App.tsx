@@ -3,6 +3,7 @@ import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import AuthFlow from './components/AuthFlow';
 import AdminCoinValuesPage from './components/admin/AdminCoinValuesPage';
+import UserProfilePage from './components/profile/UserProfilePage';
 import { useAuth } from '@/context/AuthContext';
 
 function LoadingScreen() {
@@ -78,6 +79,14 @@ export default function App() {
           element={
             <RequireAuth>
               <AdminCoinValuesPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/:username"
+          element={
+            <RequireAuth>
+              <UserProfilePage />
             </RequireAuth>
           }
         />
