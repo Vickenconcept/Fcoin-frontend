@@ -413,6 +413,7 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
     isCommenting,
     isSharing,
     loadFeed,
+    reload: loadFeed,
     createPost,
     toggleLike,
     addComment,

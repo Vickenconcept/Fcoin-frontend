@@ -133,7 +133,15 @@ export function FeedSection() {
     deletePost,
     loadComments,
     loadPost,
+    reload: reloadFeed,
   } = useFeed(sortBy);
+
+  // Reload feed when user avatar changes
+  useEffect(() => {
+    if (user?.avatar_url) {
+      reloadFeed(1);
+    }
+  }, [user?.avatar_url, reloadFeed]);
 
   console.log('FeedSection: Hook state', { 
     postsCount: posts.length, 
@@ -492,7 +500,12 @@ export function FeedSection() {
       }
       const comments = await loadComments(postId);
       if (comments) {
-        setPostDetailComments(comments);
+        // Ensure replies array is always present
+        const commentsWithReplies = comments.map(comment => ({
+          ...comment,
+          replies: comment.replies || []
+        }));
+        setPostDetailComments(commentsWithReplies);
         // Scroll to specific comment if commentId is provided
         if (commentId) {
           setTimeout(() => {
@@ -589,7 +602,12 @@ export function FeedSection() {
       // Reload comments
       const loadedComments = await loadComments(postDetailPost.id);
       if (loadedComments) {
-        setPostDetailComments(loadedComments);
+        // Ensure replies array is always present
+        const commentsWithReplies = loadedComments.map(comment => ({
+          ...comment,
+          replies: comment.replies || []
+        }));
+        setPostDetailComments(commentsWithReplies);
       }
       // Update post comments count (only for top-level comments, not replies)
       if (!parentId) {
@@ -2036,7 +2054,7 @@ export function FeedSection() {
                           )}
 
                           {/* Nested Replies */}
-                          {comment.replies.length > 0 && (
+                          {comment.replies && comment.replies.length > 0 && (
                             <div className="ml-11 mt-2 space-y-3">
                               {comment.replies.map((reply) => (
                                 <div key={reply.id} id={`comment-${reply.id}`} className="flex gap-2">

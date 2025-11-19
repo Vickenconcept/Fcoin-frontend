@@ -19,6 +19,7 @@ import {
   Plus,
   X,
   Copy,
+  Upload,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSocialAccounts } from '../hooks/useSocialAccounts';
@@ -92,7 +93,7 @@ type EditableProfileLink = { id: string; label: string; url: string };
 
 const generateLinkId = () => Math.random().toString(36).slice(2, 11);
 
-const toEditableLinks = (links?: Array<{ label?: string; url?: string }>): EditableProfileLink[] =>
+const toEditableLinks = (links?: Array<{ label?: string; url?: string }> | null): EditableProfileLink[] =>
   (links ?? []).map((link, index) => ({
     id: `${link.label ?? 'link'}-${index}-${generateLinkId()}`,
     label: link.label ?? '',
@@ -134,6 +135,8 @@ export function ProfileSection() {
   const [isTikTokManagerOpen, setIsTikTokManagerOpen] = useState(false);
   const [displayName, setDisplayName] = useState(user?.display_name ?? '');
   const [username, setUsername] = useState(user?.username ?? '');
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url ?? '');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [profileBio, setProfileBio] = useState(user?.profile_bio ?? '');
   const [profileLocation, setProfileLocation] = useState(user?.profile_location ?? '');
   const [profileLinks, setProfileLinks] = useState<EditableProfileLink[]>(toEditableLinks(user?.profile_links));
@@ -144,17 +147,20 @@ export function ProfileSection() {
   useEffect(() => {
     setDisplayName(user?.display_name ?? '');
     setUsername(user?.username ?? '');
+    setAvatarUrl(user?.avatar_url ?? '');
     setProfileBio(user?.profile_bio ?? '');
     setProfileLocation(user?.profile_location ?? '');
     setProfileLinks(toEditableLinks(user?.profile_links));
     setUsernameStatus('idle');
     setUsernameStatusMessage('');
-  }, [user?.display_name, user?.username, user?.profile_bio, user?.profile_location, user?.profile_links]);
+  }, [user?.display_name, user?.username, user?.avatar_url, user?.profile_bio, user?.profile_location, user?.profile_links]);
 
   const originalDisplayName = user?.display_name ?? '';
   const originalUsername = user?.username ?? '';
+  const originalAvatarUrl = user?.avatar_url ?? '';
   const trimmedDisplayName = displayName.trim();
   const trimmedUsername = username.trim();
+  const trimmedAvatarUrl = avatarUrl.trim();
   const originalProfileBio = user?.profile_bio ?? '';
   const originalProfileLocation = user?.profile_location ?? '';
   const originalProfileLinks = user?.profile_links ?? [];
@@ -173,6 +179,7 @@ export function ProfileSection() {
   const hasProfileChanges =
     trimmedDisplayName !== originalDisplayName ||
     trimmedUsername !== originalUsername ||
+    trimmedAvatarUrl !== originalAvatarUrl ||
     trimmedBio !== originalProfileBio ||
     trimmedLocation !== originalProfileLocation ||
     JSON.stringify(sanitizedProfileLinks) !== JSON.stringify(originalProfileLinks);
@@ -326,6 +333,10 @@ export function ProfileSection() {
         payload.username = trimmedUsername;
       }
 
+      if (trimmedAvatarUrl !== originalAvatarUrl) {
+        payload.avatar_url = trimmedAvatarUrl || null;
+      }
+
       if (trimmedBio !== originalProfileBio) {
         payload.profile_bio = trimmedBio || null;
       }
@@ -410,8 +421,83 @@ export function ProfileSection() {
       <Card className="p-6 border-purple-100 bg-white">
         <h3 className="text-slate-900 mb-6">Profile Information</h3>
         <div className="flex items-start gap-6 mb-6">
-          <div className="w-24 h-24 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center">
-            <span className="text-4xl">👤</span>
+          <div className="relative">
+            <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl">👤</span>
+              )}
+            </div>
+            <label className="absolute bottom-0 right-0 bg-purple-600 text-white rounded-full p-2 cursor-pointer hover:bg-purple-700 transition-colors">
+              <Upload className="w-4 h-4" />
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e: { target: { files: FileList | null; value: string } }) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+
+                  if (file.size > 5 * 1024 * 1024) {
+                    toast.error('Image size must be less than 5MB');
+                    return;
+                  }
+
+                  setIsUploadingAvatar(true);
+                  try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? 'http://localhost:8000/api';
+                    const token = apiClient.getToken();
+                    const response = await fetch(`${API_BASE_URL}/v1/upload`, {
+                      method: 'POST',
+                      headers: {
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: formData,
+                    });
+
+                    const data = await response.json();
+                    if (response.ok && data.data?.url) {
+                      setAvatarUrl(data.data.url);
+                      // Immediately save the avatar_url to the profile
+                      try {
+                        const saveResponse = await apiClient.request('/v1/profile', {
+                          method: 'PATCH',
+                          body: { avatar_url: data.data.url } as any,
+                        });
+                        if (saveResponse.ok) {
+                          await refreshUser();
+                          toast.success('Profile image uploaded and saved successfully');
+                        } else {
+                          toast.error('Image uploaded but failed to save. Please try saving again.');
+                        }
+                      } catch (saveError) {
+                        console.error('Save avatar error:', saveError);
+                        toast.error('Image uploaded but failed to save. Please try saving again.');
+                      }
+                    } else {
+                      toast.error(data.errors?.[0]?.detail || 'Failed to upload image');
+                    }
+                  } catch (error) {
+                    console.error('Avatar upload error:', error);
+                    toast.error('Failed to upload image');
+                  } finally {
+                    setIsUploadingAvatar(false);
+                    // Reset input
+                    e.target.value = '';
+                  }
+                }}
+                disabled={isUploadingAvatar}
+              />
+            </label>
+            {isUploadingAvatar && (
+              <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                <Loader2 className="w-6 h-6 text-white animate-spin" />
+              </div>
+            )}
           </div>
           <div className="flex-1 space-y-4">
             <div>
@@ -584,10 +670,14 @@ export function ProfileSection() {
         </div>
         <div className="rounded-2xl border border-white bg-white/70 p-5 space-y-4 shadow-inner">
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-full bg-purple-200 flex items-center justify-center text-xl text-purple-700 font-semibold">
-              {(trimmedDisplayName || trimmedUsername || originalUsername || 'FC')
-                .slice(0, 2)
-                .toUpperCase()}
+            <div className="w-16 h-16 rounded-full bg-purple-200 flex items-center justify-center text-xl text-purple-700 font-semibold overflow-hidden">
+              {trimmedAvatarUrl || originalAvatarUrl ? (
+                <img src={trimmedAvatarUrl || originalAvatarUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                (trimmedDisplayName || trimmedUsername || originalUsername || 'FC')
+                  .slice(0, 2)
+                  .toUpperCase()
+              )}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">

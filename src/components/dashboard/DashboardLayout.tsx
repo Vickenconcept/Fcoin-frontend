@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
+  AlertTriangle,
   BarChart3,
   Coins,
   Home,
@@ -28,6 +29,7 @@ import { WalletSection } from './sections/WalletSection';
 import { ProfileSection } from './sections/ProfileSection';
 import { SocialInsightsSection } from './sections/SocialInsightsSection';
 import { FeedSection } from './sections/FeedSection';
+import { RewardAnomaliesSection } from './sections/RewardAnomaliesSection';
 import { LaunchCoinModal } from './LaunchCoinModal';
 import { useRewardRules } from './hooks/useRewardRules';
 import { useCoins } from './hooks/useCoins';
@@ -38,9 +40,26 @@ type ClickEvent = {
   stopPropagation: () => void;
 };
 
-type TabType = 'feed' | 'home' | 'discover' | 'my-coin' | 'wallet' | 'profile' | 'social-insights';
+type TabType =
+  | 'feed'
+  | 'home'
+  | 'discover'
+  | 'my-coin'
+  | 'wallet'
+  | 'profile'
+  | 'social-insights'
+  | 'reward-anomalies';
 
-const allowedTabs: TabType[] = ['feed', 'home', 'discover', 'my-coin', 'wallet', 'profile', 'social-insights'];
+const allowedTabs: TabType[] = [
+  'feed',
+  'home',
+  'discover',
+  'my-coin',
+  'wallet',
+  'profile',
+  'social-insights',
+  'reward-anomalies',
+];
 
 export default function DashboardLayout() {
   const { user, logout, refreshUser } = useAuth();
@@ -304,6 +323,20 @@ export default function DashboardLayout() {
             <Settings className="w-5 h-5" />
             <span>Profile & Settings</span>
           </button>
+
+          {isSuperAdmin && (
+            <button
+              onClick={() => goToTab('reward-anomalies')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                activeTab === 'reward-anomalies'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                  : 'text-slate-600 hover:bg-purple-50'
+              }`}
+            >
+              <AlertTriangle className="w-5 h-5" />
+              <span>Reward Anomalies</span>
+            </button>
+          )}
         </nav>
 
         <Button variant="ghost" className="w-full justify-start text-slate-600 mt-auto" onClick={handleLogout}>
@@ -364,6 +397,22 @@ export default function DashboardLayout() {
               {isSuperAdmin && (
                 <button
                   onClick={() => {
+                    goToTab('reward-anomalies');
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                    activeTab === 'reward-anomalies'
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                      : 'text-slate-600 hover:bg-purple-50'
+                  }`}
+                >
+                  <AlertTriangle className="w-5 h-5" />
+                  <span>Reward Anomalies</span>
+                </button>
+              )}
+              {isSuperAdmin && (
+                <button
+                  onClick={() => {
                     setSidebarOpen(false);
                     navigate('/admin/coin-values');
                   }}
@@ -419,8 +468,12 @@ export default function DashboardLayout() {
                 </Button>
               )}
 
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center cursor-pointer uppercase">
-                <span className="text-white font-medium">{userInitials}</span>
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center cursor-pointer uppercase overflow-hidden">
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt={user.display_name || user.username || 'User'} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-white font-medium">{userInitials}</span>
+                )}
               </div>
             </div>
           </div>
@@ -479,6 +532,22 @@ export default function DashboardLayout() {
 
           {activeTab === 'social-insights' && (
             <SocialInsightsSection coins={coins} isCoinsLoading={isCoinsLoading} />
+          )}
+
+          {activeTab === 'reward-anomalies' && (
+            isSuperAdmin ? (
+              <RewardAnomaliesSection />
+            ) : (
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Card className="p-8 bg-white border-red-100 text-center max-w-md">
+                  <ShieldCheck className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                  <h2 className="text-xl font-semibold text-slate-900 mb-2">Access Restricted</h2>
+                  <p className="text-slate-600">
+                    This dashboard is only available to super administrators.
+                  </p>
+                </Card>
+              </div>
+            )
           )}
         </main>
       </div>

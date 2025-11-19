@@ -23,8 +23,22 @@ import {
   MapPin,
   Link2,
   Share2,
+  Copy,
+  QrCode,
+  UserPlus,
+  UserMinus,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 import toast from 'react-hot-toast';
 
 type ProfileData = {
@@ -53,7 +67,26 @@ type ProfileData = {
     description: string | null;
   }>;
   recent_posts: FeedPost[];
+  posts_pagination?: {
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+  };
 };
+
+type FollowEntry = {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  verified_creator: boolean;
+  default_coin_symbol: string | null;
+  is_following?: boolean;
+  followers_count?: number;
+};
+
+type FilterType = 'all' | 'rewards' | 'media';
 
 const RESERVED_USERNAMES = new Set([
   '',
@@ -79,31 +112,105 @@ export default function UserProfilePage() {
   const [postUpdating, setPostUpdating] = useState<Record<string, boolean>>({});
   const [postDeleting, setPostDeleting] = useState<Record<string, boolean>>({});
   const [rewardToggleLoading, setRewardToggleLoading] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [postsPage, setPostsPage] = useState(1);
+  const [postsPagination, setPostsPagination] = useState<ProfileData['posts_pagination'] | null>(null);
+  const [isPostsLoading, setIsPostsLoading] = useState(false);
+  const [followersModalOpen, setFollowersModalOpen] = useState(false);
+  const [followingModalOpen, setFollowingModalOpen] = useState(false);
+  const [followersList, setFollowersList] = useState<FollowEntry[]>([]);
+  const [followingList, setFollowingList] = useState<FollowEntry[]>([]);
+  const [followersLoading, setFollowersLoading] = useState(false);
+  const [followingLoading, setFollowingLoading] = useState(false);
+  const [followActionLoading, setFollowActionLoading] = useState<Record<string, boolean>>({});
+  const [enableRewardsModalPost, setEnableRewardsModalPost] = useState<FeedPost | null>(null);
+  const [walletCoins, setWalletCoins] = useState<Array<{ coin_symbol: string; balance: number }>>([]);
+  const [isWalletCoinsLoading, setIsWalletCoinsLoading] = useState(false);
+  const [walletCoinsError, setWalletCoinsError] = useState<string | null>(null);
+  const [enableRewardsForm, setEnableRewardsForm] = useState({
+    reward_pool: 0,
+    reward_coin_symbol: (user?.default_coin_symbol ?? 'FCN').toUpperCase(),
+    like: 1,
+    comment: 2,
+    share: 3,
+    per_user_cap: 10,
+  });
 
-  const fetchProfile = useCallback(async () => {
-    if (!username) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await apiClient.request<ProfileData>(`/v1/profiles/${username}`);
-      if (response.ok && response.data) {
-        setProfile(response.data);
+  const fetchProfile = useCallback(
+    async (options?: { filter?: FilterType; page?: number }) => {
+      if (!username) return;
+
+      const targetFilter = options?.filter ?? activeFilter;
+      const targetPage = options?.page ?? 1;
+      const isInitialLoad = targetPage === 1;
+
+      if (isInitialLoad) {
+        setIsLoading(true);
       } else {
-        setError(response.errors?.[0]?.detail || 'Unable to load profile');
-        setProfile(null);
+        setIsPostsLoading(true);
       }
-    } catch (err) {
-      console.error('[Profile] fetch error', err);
-      setError('Unable to load profile right now.');
-      setProfile(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [username]);
+
+      setError(null);
+
+      try {
+        const params = new URLSearchParams();
+        params.set('filter', targetFilter);
+        params.set('page', String(targetPage));
+        params.set('per_page', '5');
+
+        const response = await apiClient.request<ProfileData>(
+          `/v1/profiles/${username}?${params.toString()}`,
+        );
+
+        if (response.ok && response.data) {
+          const payload = response.data;
+
+          setProfile((prev) => {
+            const incomingPosts = payload.recent_posts ?? [];
+            const mergedPosts =
+              targetPage === 1 || !prev
+                ? incomingPosts
+                : [
+                    ...prev.recent_posts,
+                    ...incomingPosts.filter(
+                      (incoming) => !prev.recent_posts.some((existing) => existing.id === incoming.id),
+                    ),
+                  ];
+
+            return {
+              ...payload,
+              recent_posts: mergedPosts,
+            };
+          });
+
+          setPostsPagination(payload.posts_pagination ?? null);
+          setPostsPage(targetPage);
+        } else {
+          setError(response.errors?.[0]?.detail || 'Unable to load profile');
+          if (targetPage === 1) {
+            setProfile(null);
+          }
+        }
+      } catch (err) {
+        console.error('[Profile] fetch error', err);
+        setError('Unable to load profile right now.');
+        if (targetPage === 1) {
+          setProfile(null);
+        }
+      } finally {
+        if (isInitialLoad) {
+          setIsLoading(false);
+        } else {
+          setIsPostsLoading(false);
+        }
+      }
+    },
+    [username, activeFilter],
+  );
 
   useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+    fetchProfile({ filter: activeFilter, page: 1 }).catch(() => null);
+  }, [fetchProfile, activeFilter]);
 
   const formatTime = useCallback((dateString?: string | null) => {
     if (!dateString) return 'Unknown';
@@ -251,6 +358,229 @@ export default function UserProfilePage() {
     [removeLocalPost],
   );
 
+  const handleFilterChange = useCallback(
+    (nextFilter: FilterType) => {
+      if (nextFilter === activeFilter) return;
+      setActiveFilter(nextFilter);
+      setPostsPage(1);
+    },
+    [activeFilter],
+  );
+
+  const handleLoadMorePosts = useCallback(() => {
+    if (isPostsLoading || !postsPagination) return;
+    if (postsPagination.current_page >= postsPagination.last_page) return;
+    const nextPage = postsPagination.current_page + 1;
+    fetchProfile({ filter: activeFilter, page: nextPage }).catch(() => null);
+  }, [postsPagination, isPostsLoading, fetchProfile, activeFilter]);
+
+  const fetchWalletCoins = useCallback(async () => {
+    setIsWalletCoinsLoading(true);
+    setWalletCoinsError(null);
+    try {
+      const response = await apiClient.request<{
+        coin_balances?: Array<{ coin_symbol?: string; balance?: number }>;
+      }>('/v1/wallets/me', { method: 'GET' });
+
+      if (response.ok && response.data) {
+        const balances = Array.isArray(response.data.coin_balances)
+          ? response.data.coin_balances
+              .map((coin) => ({
+                coin_symbol: String(coin.coin_symbol ?? '').toUpperCase(),
+                balance: Number(coin.balance ?? 0) || 0,
+              }))
+              .filter((coin) => coin.coin_symbol)
+          : [];
+
+        setWalletCoins(balances);
+
+        if (balances.length > 0) {
+          setEnableRewardsForm((prev) => {
+            const hasCurrent = balances.some((coin) => coin.coin_symbol === prev.reward_coin_symbol);
+            return {
+              ...prev,
+              reward_coin_symbol: hasCurrent ? prev.reward_coin_symbol : balances[0].coin_symbol,
+            };
+          });
+        }
+      } else {
+        setWalletCoinsError(response.errors?.[0]?.detail || 'Failed to load wallet coins');
+      }
+    } catch (error) {
+      console.error('[Profile] wallet coins error', error);
+      setWalletCoinsError('Failed to load wallet coins');
+    } finally {
+      setIsWalletCoinsLoading(false);
+    }
+  }, []);
+
+  const fetchFollowList = useCallback(
+    async (type: 'followers' | 'following') => {
+      if (!profile) return;
+      const userId = profile.id;
+      if (type === 'followers') {
+        setFollowersLoading(true);
+      } else {
+        setFollowingLoading(true);
+      }
+
+      try {
+        const response = await apiClient.request<{ data: FollowEntry[] }>(
+          `/v1/users/${userId}/${type}?per_page=50`,
+        );
+
+        if (response.ok && Array.isArray(response.data?.data)) {
+          const entries = response.data.data;
+          if (type === 'followers') {
+            setFollowersList(entries);
+          } else {
+            setFollowingList(entries);
+          }
+        } else {
+          toast.error('Unable to load list right now.');
+        }
+      } catch (error) {
+        console.error(`[Profile] load ${type} error`, error);
+        toast.error('Unable to load list right now.');
+      } finally {
+        if (type === 'followers') {
+          setFollowersLoading(false);
+        } else {
+          setFollowingLoading(false);
+        }
+      }
+    },
+    [profile],
+  );
+
+  const handleFollowFromDirectory = useCallback(
+    async (targetUserId: string, currentlyFollowing: boolean) => {
+      if (followActionLoading[targetUserId]) return;
+
+      setFollowActionLoading((prev) => ({ ...prev, [targetUserId]: true }));
+      try {
+        if (currentlyFollowing) {
+          const response = await apiClient.request(`/v1/users/${targetUserId}/follow`, {
+            method: 'DELETE',
+          });
+          if (!response.ok) {
+            toast.error(response.errors?.[0]?.detail || 'Failed to unfollow');
+            return;
+          }
+          toast.success('Unfollowed');
+        } else {
+          const response = await apiClient.request('/v1/follows', {
+            method: 'POST',
+            body: { creator_id: targetUserId } as any,
+          });
+          if (!response.ok) {
+            toast.error(response.errors?.[0]?.detail || 'Failed to follow');
+            return;
+          }
+          toast.success('Following');
+        }
+
+        setFollowersList((prev) =>
+          prev.map((entry) =>
+            entry.id === targetUserId ? { ...entry, is_following: !currentlyFollowing } : entry,
+          ),
+        );
+        setFollowingList((prev) =>
+          prev.map((entry) =>
+            entry.id === targetUserId ? { ...entry, is_following: !currentlyFollowing } : entry,
+          ),
+        );
+
+        if (profile && targetUserId === profile.id) {
+          setProfile({
+            ...profile,
+            is_following: !currentlyFollowing,
+            followers_count: Math.max(
+              0,
+              profile.followers_count + (currentlyFollowing ? -1 : 1),
+            ),
+          });
+        }
+      } catch (error) {
+        console.error('[Profile] follow directory error', error);
+        toast.error('Unable to update follow status.');
+      } finally {
+        setFollowActionLoading((prev) => {
+          const next = { ...prev };
+          delete next[targetUserId];
+          return next;
+        });
+      }
+    },
+    [followActionLoading, profile],
+  );
+
+  const openEnableRewardsModal = useCallback(
+    (post: FeedPost) => {
+      setEnableRewardsModalPost(post);
+      setEnableRewardsForm((prev) => ({
+        reward_pool: Math.max(post.reward_pool || 0, 10),
+        reward_coin_symbol: (post.reward_coin_symbol ?? prev.reward_coin_symbol ?? (user?.default_coin_symbol ?? 'FCN')).toUpperCase(),
+        like: post.reward_rule?.like ?? prev.like ?? 1,
+        comment: post.reward_rule?.comment ?? prev.comment ?? 2,
+        share: post.reward_rule?.share ?? prev.share ?? 3,
+        per_user_cap: post.reward_rule?.per_user_cap ?? prev.per_user_cap ?? 10,
+      }));
+      fetchWalletCoins().catch(() => null);
+    },
+    [fetchWalletCoins, user?.default_coin_symbol],
+  );
+
+  const closeEnableRewardsModal = useCallback(() => {
+    setEnableRewardsModalPost(null);
+  }, []);
+
+  const handleEnableRewardsSubmit = useCallback(async () => {
+    if (!enableRewardsModalPost) return;
+
+    if (enableRewardsForm.reward_pool <= 0) {
+      toast.error('Reward pool must be greater than zero.');
+      return;
+    }
+
+    setRewardToggleLoading(enableRewardsModalPost.id);
+    try {
+      await handlePostUpdate(enableRewardsModalPost.id, {
+        reward_enabled: true,
+        reward_pool: enableRewardsForm.reward_pool,
+        reward_coin_symbol: enableRewardsForm.reward_coin_symbol,
+        reward_rule: {
+          like: enableRewardsForm.like,
+          comment: enableRewardsForm.comment,
+          share: enableRewardsForm.share,
+          per_user_cap: enableRewardsForm.per_user_cap,
+        },
+      });
+      toast.success('Rewards enabled on this post.');
+      setEnableRewardsModalPost(null);
+    } catch (error) {
+      console.error('[Profile] enable rewards error', error);
+      toast.error('Failed to enable rewards.');
+    } finally {
+      setRewardToggleLoading(null);
+    }
+  }, [enableRewardsModalPost, enableRewardsForm, handlePostUpdate]);
+
+  const openFollowersDirectory = useCallback(() => {
+    if (!profile) return;
+    setFollowersModalOpen(true);
+    fetchFollowList('followers').catch(() => null);
+  }, [profile, fetchFollowList]);
+
+  const openFollowingDirectory = useCallback(() => {
+    if (!profile) return;
+    setFollowingModalOpen(true);
+    fetchFollowList('following').catch(() => null);
+  }, [profile, fetchFollowList]);
+
+  const closeFollowersDirectory = useCallback(() => setFollowersModalOpen(false), []);
+  const closeFollowingDirectory = useCallback(() => setFollowingModalOpen(false), []);
+
   const goBack = useCallback(() => {
     if (window.history.length > 2) {
       navigate(-1);
@@ -288,6 +618,21 @@ export default function UserProfilePage() {
     ];
   }, [profile]);
 
+  const canLoadMore = useMemo(() => {
+    if (!postsPagination) return false;
+    return postsPagination.current_page < postsPagination.last_page;
+  }, [postsPagination]);
+
+  const selectedCoinBalance = useMemo(() => {
+    const match = walletCoins.find(
+      (coin) => coin.coin_symbol === enableRewardsForm.reward_coin_symbol,
+    );
+    return match?.balance ?? 0;
+  }, [walletCoins, enableRewardsForm.reward_coin_symbol]);
+
+  const canSubmitEnableRewards =
+    enableRewardsForm.reward_pool > 0 && selectedCoinBalance >= enableRewardsForm.reward_pool;
+
   const profileLink = useMemo(() => {
     if (profile?.profile_url) {
       return profile.profile_url;
@@ -307,6 +652,49 @@ export default function UserProfilePage() {
       () => toast.error('Unable to copy link'),
     );
   }, [profileLink]);
+
+  const qrImageUrl = useMemo(() => {
+    if (!profileLink) return null;
+    return `https://quickchart.io/qr?text=${encodeURIComponent(profileLink)}&size=180&margin=2`;
+  }, [profileLink]);
+
+  const handleNativeShare = useCallback(() => {
+    if (!profileLink) return;
+    if (navigator.share) {
+      navigator
+        .share({
+          title: profile?.display_name ?? profile?.username ?? 'FanCoin profile',
+          text: 'Check out this FanCoin creator profile',
+          url: profileLink,
+        })
+        .catch(() => {
+          /* ignore */
+        });
+    } else {
+      handleCopyProfileLink();
+    }
+  }, [profileLink, profile?.display_name, profile?.username, handleCopyProfileLink]);
+
+  const handleSocialShare = useCallback(
+    (platform: 'twitter' | 'facebook' | 'whatsapp') => {
+      if (!profileLink) return;
+      const encoded = encodeURIComponent(profileLink);
+      let shareUrl = profileLink;
+      if (platform === 'twitter') {
+        shareUrl = `https://twitter.com/intent/tweet?url=${encoded}&text=${encodeURIComponent(
+          'Follow me on FanCoin',
+        )}`;
+      } else if (platform === 'facebook') {
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encoded}`;
+      } else if (platform === 'whatsapp') {
+        shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(
+          `Follow me on FanCoin: ${profileLink}`,
+        )}`;
+      }
+      window.open(shareUrl, '_blank', 'noopener,noreferrer');
+    },
+    [profileLink],
+  );
 
   if (RESERVED_USERNAMES.has(cleanedUsername)) {
     return <Navigate to="/dashboard/feed" replace />;
@@ -407,18 +795,91 @@ export default function UserProfilePage() {
             </Card>
 
             <div className="grid md:grid-cols-3 gap-4">
-              {stats.map(({ label, value, icon: Icon }) => (
-                <Card key={label} className="p-5 bg-white border-purple-100 flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-purple-50 text-purple-600">
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-semibold text-slate-900">{value}</p>
-                    <p className="text-sm text-slate-500">{label}</p>
-                  </div>
-                </Card>
-              ))}
+              {stats.map(({ label, value, icon: Icon }) => {
+                const isFollowersStat = label === 'Followers';
+                const isFollowingStat = label === 'Following';
+                const clickHandler = isFollowersStat
+                  ? openFollowersDirectory
+                  : isFollowingStat
+                  ? openFollowingDirectory
+                  : undefined;
+                return (
+                  <Card
+                    key={label}
+                    className={`p-5 bg-white border-purple-100 flex items-center gap-4 ${
+                      clickHandler ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
+                    }`}
+                    onClick={clickHandler}
+                    role={clickHandler ? 'button' : undefined}
+                    aria-label={clickHandler ? `View ${label.toLowerCase()} list` : undefined}
+                  >
+                    <div className="p-3 rounded-xl bg-purple-50 text-purple-600">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-semibold text-slate-900">{value}</p>
+                      <p className="text-sm text-slate-500">{label}</p>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
+
+            <Card className="p-6 bg-white border-purple-100 flex flex-col gap-6 md:flex-row md:items-center">
+              <div className="flex-1 space-y-2">
+                <h2 className="text-lg font-semibold text-slate-900">Share your profile</h2>
+                <p className="text-sm text-slate-500">
+                  Copy your link, share to socials, or show a QR code so fans can follow instantly.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="outline" onClick={handleCopyProfileLink} className="flex items-center gap-2">
+                    <Copy className="w-4 h-4" />
+                    Copy link
+                  </Button>
+                  <Button variant="outline" onClick={handleNativeShare} className="flex items-center gap-2">
+                    <Share2 className="w-4 h-4" />
+                    Quick share
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSocialShare('twitter')}
+                    className="flex items-center gap-2"
+                  >
+                    <span className="font-semibold">X</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSocialShare('facebook')}
+                    className="flex items-center gap-2"
+                  >
+                    <span className="font-semibold">Facebook</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSocialShare('whatsapp')}
+                    className="flex items-center gap-2"
+                  >
+                    <span className="font-semibold">WhatsApp</span>
+                  </Button>
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-3">
+                {qrImageUrl ? (
+                  <>
+                    <img
+                      src={qrImageUrl}
+                      alt="Profile QR code"
+                      className="w-40 h-40 rounded-xl border border-purple-100 bg-white p-2"
+                    />
+                    <p className="text-xs text-slate-500">Scan to view profile</p>
+                  </>
+                ) : (
+                  <div className="w-40 h-40 rounded-xl border border-dashed border-purple-200 flex items-center justify-center text-slate-400 text-sm">
+                    QR unavailable
+                  </div>
+                )}
+              </div>
+            </Card>
 
             {profile.profile_bio && (
               <Card className="p-6 bg-white border-purple-100">
@@ -477,24 +938,31 @@ export default function UserProfilePage() {
             )}
 
             <Card className="p-6 bg-white border-purple-100">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Recent posts
-                  </h2>
+                  <h2 className="text-lg font-semibold text-slate-900">Recent posts</h2>
                   <p className="text-sm text-slate-500">
                     {profile.posts_count > 0
                       ? `${profile.posts_count} total · ${profile.reward_posts_count} with rewards · ${profile.reward_pool_total.toLocaleString()} coins funded`
                       : 'No posts yet'}
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/dashboard/feed')}
-                  className="text-slate-600"
-                >
-                  Go to feed
-                </Button>
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+                  <Tabs value={activeFilter} onValueChange={(value: FilterType) => handleFilterChange(value)}>
+                    <TabsList className="bg-purple-50">
+                      <TabsTrigger value="all">All</TabsTrigger>
+                      <TabsTrigger value="rewards">Rewards</TabsTrigger>
+                      <TabsTrigger value="media">Media</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate('/dashboard/feed')}
+                    className="text-slate-600"
+                  >
+                    Go to feed
+                  </Button>
+                </div>
               </div>
 
               {profile.recent_posts.length === 0 ? (
@@ -502,8 +970,9 @@ export default function UserProfilePage() {
                   This creator has not posted anything yet.
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {profile.recent_posts.map((post) => {
+                <>
+                  <div className="space-y-4">
+                    {profile.recent_posts.map((post) => {
                     const isOwner = profile.is_current_user;
                     const isUpdating = !!postUpdating[post.id];
                     const isDeleting = !!postDeleting[post.id];
@@ -617,7 +1086,7 @@ export default function UserProfilePage() {
                             </Select>
                           </div>
                           <div className="flex flex-wrap gap-3">
-                            {post.reward_enabled && (
+                            {post.reward_enabled ? (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -627,6 +1096,17 @@ export default function UserProfilePage() {
                               >
                                 <Coins className="w-4 h-4" />
                                 {isRewardDisabling ? 'Disabling...' : 'Disable rewards'}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openEnableRewardsModal(post)}
+                                disabled={isRewardDisabling || isUpdating}
+                                className="flex items-center gap-2 text-orange-600 border-orange-200 hover:bg-orange-50"
+                              >
+                                <Coins className="w-4 h-4" />
+                                {isRewardDisabling ? 'Updating...' : 'Enable rewards'}
                               </Button>
                             )}
                             <Button
@@ -643,14 +1123,342 @@ export default function UserProfilePage() {
                         </div>
                       )}
                     </Card>
-                    );
-                  })}
-                </div>
+                  );
+                })}
+                  </div>
+                  {isPostsLoading && (
+                    <div className="text-center text-sm text-slate-500 py-2">Loading posts…</div>
+                  )}
+                  {canLoadMore && (
+                    <div className="pt-2 flex justify-center">
+                      <Button variant="outline" onClick={handleLoadMorePosts} disabled={isPostsLoading}>
+                        {isPostsLoading ? 'Loading…' : 'Load more posts'}
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
             </Card>
           </>
         )}
       </div>
+
+      <Dialog
+        open={followersModalOpen}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            closeFollowersDirectory();
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Followers</DialogTitle>
+            <DialogDescription>People who follow this creator.</DialogDescription>
+          </DialogHeader>
+          {followersLoading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, index) => (
+                <Skeleton key={index} className="h-16 rounded-xl" />
+              ))}
+            </div>
+          ) : followersList.length === 0 ? (
+            <p className="text-sm text-slate-500">No followers yet.</p>
+          ) : (
+            <ScrollArea className="max-h-[360px] pr-4">
+              <div className="space-y-3">
+                {followersList.map((entry) => {
+                  const isFollowingEntry = entry.is_following ?? false;
+                  const isSelf = entry.id === user?.id;
+                  const isActionLoading = followActionLoading[entry.id];
+                  return (
+                    <div
+                      key={entry.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-purple-50 bg-white px-3 py-2"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={entry.avatar_url || undefined} />
+                          <AvatarFallback>
+                            {(entry.display_name || entry.username).slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {entry.display_name || entry.username}
+                          </p>
+                          <p className="text-xs text-slate-500">@{entry.username}</p>
+                        </div>
+                      </div>
+                      {!isSelf && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleFollowFromDirectory(entry.id, isFollowingEntry)}
+                          disabled={isActionLoading}
+                          className="flex items-center gap-2"
+                        >
+                          {isActionLoading ? (
+                            'Please wait...'
+                          ) : isFollowingEntry ? (
+                            <>
+                              <UserMinus className="w-4 h-4" />
+                              Unfollow
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="w-4 h-4" />
+                              Follow
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={followingModalOpen}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            closeFollowingDirectory();
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Following</DialogTitle>
+            <DialogDescription>Creators this user is following.</DialogDescription>
+          </DialogHeader>
+          {followingLoading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, index) => (
+                <Skeleton key={index} className="h-16 rounded-xl" />
+              ))}
+            </div>
+          ) : followingList.length === 0 ? (
+            <p className="text-sm text-slate-500">Not following anyone yet.</p>
+          ) : (
+            <ScrollArea className="max-h-[360px] pr-4">
+              <div className="space-y-3">
+                {followingList.map((entry) => {
+                  const isFollowingEntry = entry.is_following ?? true;
+                  const isSelf = entry.id === user?.id;
+                  const isActionLoading = followActionLoading[entry.id];
+                  return (
+                    <div
+                      key={entry.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-purple-50 bg-white px-3 py-2"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={entry.avatar_url || undefined} />
+                          <AvatarFallback>
+                            {(entry.display_name || entry.username).slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {entry.display_name || entry.username}
+                          </p>
+                          <p className="text-xs text-slate-500">@{entry.username}</p>
+                        </div>
+                      </div>
+                      {!isSelf && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleFollowFromDirectory(entry.id, isFollowingEntry)}
+                          disabled={isActionLoading}
+                          className="flex items-center gap-2"
+                        >
+                          {isActionLoading ? (
+                            'Please wait...'
+                          ) : isFollowingEntry ? (
+                            <>
+                              <UserMinus className="w-4 h-4" />
+                              Unfollow
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="w-4 h-4" />
+                              Follow
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(enableRewardsModalPost)}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            closeEnableRewardsModal();
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Enable rewards</DialogTitle>
+            <DialogDescription>
+              Re-launch the reward pool for this post. Fans will see the new amounts immediately.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-slate-700">Reward coin</label>
+              <Select
+                value={enableRewardsForm.reward_coin_symbol}
+                onValueChange={(value: string) =>
+                  setEnableRewardsForm((prev) => ({ ...prev, reward_coin_symbol: value }))
+                }
+                disabled={isWalletCoinsLoading || walletCoins.length === 0}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Pick a coin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {walletCoins.length === 0 ? (
+                    <SelectItem value="no-coins" disabled>
+                      No creator coins yet
+                    </SelectItem>
+                  ) : (
+                    walletCoins.map((coin) => (
+                      <SelectItem key={coin.coin_symbol} value={coin.coin_symbol}>
+                        <div className="flex items-center justify-between w-full">
+                          <span>{coin.coin_symbol}</span>
+                          <span className="text-xs text-slate-500">
+                            Balance: {coin.balance.toFixed(2)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {walletCoinsError && (
+                <p className="text-xs text-red-500 mt-1">{walletCoinsError}</p>
+              )}
+              {!isWalletCoinsLoading && walletCoins.length === 0 && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Launch a coin to fund reward pools from your wallet.
+                </p>
+              )}
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Reward pool</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={enableRewardsForm.reward_pool}
+                  onChange={(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    event: any,
+                  ) =>
+                    setEnableRewardsForm((prev) => ({
+                      ...prev,
+                      reward_pool: Number(event.target.value) || 0,
+                    }))
+                  }
+                  className="mt-1"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Balance available: {selectedCoinBalance.toFixed(2)}{' '}
+                  {enableRewardsForm.reward_coin_symbol}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Max per user</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={enableRewardsForm.per_user_cap}
+                  onChange={(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    event: any,
+                  ) =>
+                    setEnableRewardsForm((prev) => ({
+                      ...prev,
+                      per_user_cap: Number(event.target.value) || 0,
+                    }))
+                  }
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-slate-700">Per-action rewards</label>
+              <div className="grid md:grid-cols-3 gap-3 mt-2">
+                {(['like', 'comment', 'share'] as Array<'like' | 'comment' | 'share'>).map(
+                  (field) => (
+                    <div key={field}>
+                      <p className="text-xs text-slate-500 capitalize">{field}</p>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.1"
+                        value={enableRewardsForm[field]}
+                        onChange={(
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          event: any,
+                        ) =>
+                          setEnableRewardsForm((prev) => ({
+                            ...prev,
+                            [field]: Number(event.target.value) || 0,
+                          }))
+                        }
+                        className="mt-1"
+                      />
+                    </div>
+                  ),
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-sm text-slate-500">
+              <span>
+                Fans can earn up to {enableRewardsForm.per_user_cap} {enableRewardsForm.reward_coin_symbol} per
+                post.
+              </span>
+              <span>
+                Pool remaining: {(selectedCoinBalance - enableRewardsForm.reward_pool).toFixed(2)}{' '}
+                {enableRewardsForm.reward_coin_symbol}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="ghost" onClick={closeEnableRewardsModal}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEnableRewardsSubmit}
+              disabled={!canSubmitEnableRewards || isWalletCoinsLoading || !enableRewardsModalPost}
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              {rewardToggleLoading === enableRewardsModalPost?.id ? 'Saving...' : 'Enable rewards'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
