@@ -293,6 +293,33 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
     }
   }, []);
 
+  const updatePost = useCallback(async (postId: string, data: { content?: string; visibility?: string }) => {
+    try {
+      const response = await apiClient.request<FeedPost>(
+        `/v1/feed/posts/${postId}`,
+        {
+          method: 'PUT',
+          body: data,
+        }
+      );
+
+      if (response.ok && response.data) {
+        setPosts((prev) =>
+          prev.map((p) => (p.id === postId ? response.data! : p))
+        );
+        toast.success('Post updated successfully');
+        return response.data;
+      } else {
+        toast.error(response.errors?.[0]?.detail || 'Failed to update post');
+        return null;
+      }
+    } catch (error) {
+      console.error('Update post error:', error);
+      toast.error('Failed to update post');
+      return null;
+    }
+  }, []);
+
   const deletePost = useCallback(async (postId: string) => {
     try {
       const response = await apiClient.request(`/v1/feed/posts/${postId}`, {
@@ -365,6 +392,7 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
     addComment,
     likeComment,
     sharePost,
+    updatePost,
     deletePost,
     loadComments,
     loadPost,

@@ -38,6 +38,14 @@ import { NotificationPanel } from '../NotificationPanel';
 import { useNotifications } from '../hooks/useNotifications';
 import { ShareModal } from '../ShareModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Globe, Users, Lock, Settings } from 'lucide-react';
 
 export function FeedSection() {
   const { user } = useAuth();
@@ -47,6 +55,7 @@ export function FeedSection() {
   const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null);
   const [comments, setComments] = useState<FeedComment[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
+  const [newPostVisibility, setNewPostVisibility] = useState<'public' | 'followers' | 'private'>('public');
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState<Record<string, string>>({});
@@ -96,6 +105,7 @@ export function FeedSection() {
     addComment,
     likeComment,
     sharePost,
+    updatePost,
     deletePost,
     loadComments,
     loadPost,
@@ -325,14 +335,16 @@ export function FeedSection() {
 
     const result = await createPost({
       content: newPostContent.trim() || undefined,
-      visibility: 'public',
+      visibility: newPostVisibility,
       media: uploadedMedia.length > 0 ? uploadedMedia : undefined,
     });
 
     if (result) {
       setNewPostContent('');
+      setNewPostVisibility('public');
       setUploadedMedia([]);
       setComposerOpen(false);
+      setUploadProgress({});
     }
   };
 
@@ -554,9 +566,67 @@ export function FeedSection() {
                         </Badge>
                       )}
                     </div>
-                    <span className="text-sm text-gray-500">{formatTime(post.created_at)}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">{formatTime(post.created_at)}</span>
+                      {/* Visibility Badge */}
+                      {post.visibility === 'public' && (
+                        <Badge variant="outline" className="text-xs">
+                          <Globe className="w-3 h-3 mr-1" />
+                          Public
+                        </Badge>
+                      )}
+                      {post.visibility === 'followers' && (
+                        <Badge variant="outline" className="text-xs">
+                          <Users className="w-3 h-3 mr-1" />
+                          Followers
+                        </Badge>
+                      )}
+                      {post.visibility === 'private' && (
+                        <Badge variant="outline" className="text-xs">
+                          <Lock className="w-3 h-3 mr-1" />
+                          Private
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
+                {/* Edit Visibility Button (only for post owner) */}
+                {user && post.user && String(post.user.id) === String(user.id) && (
+                  <Select
+                    value={post.visibility}
+                    onValueChange={async (value: 'public' | 'followers' | 'private') => {
+                      const result = await updatePost(post.id, { visibility: value });
+                      if (result) {
+                        toast.success('Visibility updated');
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-[140px] h-8 text-xs">
+                      <Settings className="w-3 h-3 mr-1" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4" />
+                          <span>Public</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="followers">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4" />
+                          <span>Followers Only</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="private">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4" />
+                          <span>Private</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {/* Share Header - if this is a shared post */}
@@ -906,6 +976,36 @@ export function FeedSection() {
                 )}
                 </div>
 
+                {/* Visibility Selector */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">Visibility:</label>
+                  <Select value={newPostVisibility} onValueChange={(value: 'public' | 'followers' | 'private') => setNewPostVisibility(value)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4" />
+                          <span>Public</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="followers">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4" />
+                          <span>Followers Only</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="private">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4" />
+                          <span>Private</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-500">
                     {newPostContent.length}/5000 characters
@@ -917,6 +1017,7 @@ export function FeedSection() {
                       onClick={() => {
                         setComposerOpen(false);
                         setNewPostContent('');
+                        setNewPostVisibility('public');
                         setUploadedMedia([]);
                         setUploadProgress({});
                       }}
