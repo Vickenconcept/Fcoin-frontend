@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -45,7 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Globe, Users, Lock, Settings } from 'lucide-react';
+import { Globe, Users, Lock, Settings, Coins, ChevronDown, ChevronUp, ArrowRight, ArrowLeft, Check } from 'lucide-react';
 
 export function FeedSection() {
   const { user } = useAuth();
@@ -56,6 +56,19 @@ export function FeedSection() {
   const [comments, setComments] = useState<FeedComment[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostVisibility, setNewPostVisibility] = useState<'public' | 'followers' | 'private'>('public');
+  const [rewardEnabled, setRewardEnabled] = useState(false);
+  const [rewardPool, setRewardPool] = useState<number>(0);
+  const [rewardLikeAmount, setRewardLikeAmount] = useState<number>(1);
+  const [rewardCommentAmount, setRewardCommentAmount] = useState<number>(2);
+  const [rewardShareAmount, setRewardShareAmount] = useState<number>(3);
+  const [rewardPerUserCap, setRewardPerUserCap] = useState<number>(10);
+  const [rewardCoinSymbol, setRewardCoinSymbol] = useState<string>(
+    (user?.default_coin_symbol ?? 'FCN').toUpperCase()
+  );
+  const [walletCoins, setWalletCoins] = useState<Array<{ coin_symbol: string; balance: number }>>([]);
+  const [isWalletCoinsLoading, setIsWalletCoinsLoading] = useState(false);
+  const [walletCoinsError, setWalletCoinsError] = useState<string | null>(null);
+  const [postCreationStep, setPostCreationStep] = useState<1 | 2 | 3>(1);
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState<Record<string, string>>({});
@@ -116,6 +129,53 @@ export function FeedSection() {
     isLoading,
     userId: user?.id 
   });
+
+  const fetchWalletCoins = useCallback(async () => {
+    setIsWalletCoinsLoading(true);
+    setWalletCoinsError(null);
+    try {
+      const response = await apiClient.request<{
+        coin_balances?: Array<{ coin_symbol?: string; balance?: number }>;
+      }>('/v1/wallets/me', { method: 'GET' });
+
+      if (response.ok && response.data) {
+        const balances = Array.isArray(response.data.coin_balances)
+          ? response.data.coin_balances
+              .map((coin) => ({
+                coin_symbol: String(coin.coin_symbol ?? '').toUpperCase(),
+                balance: Number(coin.balance ?? 0) || 0,
+              }))
+              .filter((coin) => coin.coin_symbol)
+          : [];
+
+        setWalletCoins(balances);
+
+        if (balances.length > 0) {
+          const hasCurrent = balances.some((coin) => coin.coin_symbol === rewardCoinSymbol);
+          if (!hasCurrent) {
+            setRewardCoinSymbol(balances[0].coin_symbol);
+          }
+        }
+      } else {
+        setWalletCoinsError(response.errors?.[0]?.detail || 'Failed to load wallet coins');
+      }
+    } catch (error) {
+      console.error('Failed to load wallet coins', error);
+      setWalletCoinsError('Failed to load wallet coins');
+    } finally {
+      setIsWalletCoinsLoading(false);
+    }
+  }, [rewardCoinSymbol]);
+
+  useEffect(() => {
+    if (composerOpen) {
+      fetchWalletCoins();
+    }
+  }, [composerOpen, fetchWalletCoins]);
+
+  const selectedRewardCoinBalance = useMemo(() => {
+    return walletCoins.find((coin) => coin.coin_symbol === rewardCoinSymbol)?.balance ?? 0;
+  }, [walletCoins, rewardCoinSymbol]);
 
 
   const handleFileUpload = async (file: File) => {
@@ -333,16 +393,51 @@ export function FeedSection() {
       return;
     }
 
+    // Validate reward pool if enabled
+    if (rewardEnabled) {
+      if (rewardPool <= 0) {
+        toast.error('Please set a reward pool amount greater than 0');
+        return;
+      }
+      if (!rewardCoinSymbol) {
+        toast.error('Select which coin to use for rewards');
+        return;
+      }
+      if (selectedRewardCoinBalance > 0 && rewardPool > selectedRewardCoinBalance) {
+        toast.error(`You only have ${selectedRewardCoinBalance} ${rewardCoinSymbol} available.`);
+        return;
+      }
+    }
+
     const result = await createPost({
       content: newPostContent.trim() || undefined,
       visibility: newPostVisibility,
       media: uploadedMedia.length > 0 ? uploadedMedia : undefined,
+      reward_enabled: rewardEnabled,
+      reward_pool: rewardEnabled ? rewardPool : undefined,
+      reward_coin_symbol: rewardEnabled ? rewardCoinSymbol : undefined,
+      reward_rule: rewardEnabled ? {
+        like: rewardLikeAmount,
+        comment: rewardCommentAmount,
+        share: rewardShareAmount,
+        per_user_cap: rewardPerUserCap,
+      } : undefined,
     });
 
     if (result) {
       setNewPostContent('');
       setNewPostVisibility('public');
-      setUploadedMedia([]);
+      setRewardEnabled(false);
+      setRewardPool(0);
+      setRewardLikeAmount(1);
+      setRewardCommentAmount(2);
+                        setRewardShareAmount(3);
+                        setRewardPerUserCap(10);
+      setRewardCoinSymbol(
+        (user?.default_coin_symbol ?? walletCoins[0]?.coin_symbol ?? 'FCN').toUpperCase()
+      );
+                        setPostCreationStep(1);
+                        setUploadedMedia([]);
       setComposerOpen(false);
       setUploadProgress({});
     }
@@ -806,7 +901,7 @@ export function FeedSection() {
                 )}
                 {post.reward_enabled && (
                   <Badge className="ml-auto bg-orange-100 text-orange-700">
-                    💰 {post.reward_pool} coins
+                    💰 {post.reward_pool} {post.reward_coin_symbol ?? 'coins'}
                   </Badge>
                 )}
               </div>
@@ -843,7 +938,26 @@ export function FeedSection() {
           </div>
 
           {/* Create Post Button */}
-          <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
+          <Dialog open={composerOpen} onOpenChange={(open: boolean) => {
+            setComposerOpen(open);
+            if (!open) {
+              // Reset all state when closing
+              setNewPostContent('');
+              setNewPostVisibility('public');
+              setRewardEnabled(false);
+              setRewardPool(0);
+              setRewardLikeAmount(1);
+              setRewardCommentAmount(2);
+              setRewardShareAmount(3);
+              setRewardPerUserCap(10);
+              setRewardCoinSymbol(
+                (user?.default_coin_symbol ?? walletCoins[0]?.coin_symbol ?? 'FCN').toUpperCase()
+              );
+              setPostCreationStep(1);
+              setUploadedMedia([]);
+              setUploadProgress({});
+            }
+          }}>
             <DialogTrigger asChild>
               <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">
                 Create Post
@@ -852,187 +966,510 @@ export function FeedSection() {
             <DialogContent className="max-w-2xl bg-white">
               <DialogHeader>
                 <DialogTitle>Create New Post</DialogTitle>
+                {/* Step Indicator */}
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <div className={`flex items-center gap-2 ${postCreationStep >= 1 ? 'text-orange-500' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${postCreationStep >= 1 ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                      {postCreationStep > 1 ? <Check className="w-4 h-4" /> : '1'}
+                    </div>
+                    <span className="text-sm font-medium">Content</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-gray-400" />
+                  <div className={`flex items-center gap-2 ${postCreationStep >= 2 ? 'text-orange-500' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${postCreationStep >= 2 ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                      {postCreationStep > 2 ? <Check className="w-4 h-4" /> : '2'}
+                    </div>
+                    <span className="text-sm font-medium">Settings</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-gray-400" />
+                  <div className={`flex items-center gap-2 ${postCreationStep >= 3 ? 'text-orange-500' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${postCreationStep >= 3 ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                      3
+                    </div>
+                    <span className="text-sm font-medium">Review</span>
+                  </div>
+                </div>
               </DialogHeader>
-              <div className="space-y-4">
-                <MentionInput
-                  value={newPostContent}
-                  onChange={setNewPostContent}
-                  placeholder="What's on your mind? Type @ to mention someone..."
-                  className="min-h-[200px]"
-                  maxLength={5000}
-                />
-                
-                {/* File Upload */}
-                <div className="space-y-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*,video/*"
-                    multiple
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || uploadedMedia.length >= 10}
-                    className="w-full"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    {isUploading ? 'Uploading...' : 'Upload Images/Video'}
-                    {uploadedMedia.length > 0 && ` (${uploadedMedia.length}/10)`}
-                  </Button>
-
-                {/* Media Previews */}
-                {(uploadedMedia.length > 0 || Object.keys(uploadProgress).length > 0) && (
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    {/* Show uploaded media */}
-                    {uploadedMedia.map((media, index) => (
-                      <div key={`uploaded-${index}-${media.url}`} className="relative group">
-                        {media.type === 'image' ? (
-                          <div className="relative w-full h-32 rounded-lg border overflow-hidden bg-gray-100">
-                            <img
-                              src={media.url}
-                              alt={`Upload ${index + 1}`}
-                              className="w-full h-full object-cover"
-                              onError={(e: { currentTarget: HTMLImageElement }) => {
-                                console.error('Image load error', {
-                                  url: media.url,
-                                  index,
-                                  media,
-                                });
-                                const target = e.currentTarget;
-                                target.style.display = 'none';
-                                // Show error placeholder
-                                const parent = target.parentElement;
-                                if (parent) {
-                                  parent.innerHTML = `
-                                    <div class="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                                      <svg class="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                      </svg>
-                                      <p class="text-xs">Failed to load</p>
-                                    </div>
-                                  `;
-                                }
-                              }}
-                              onLoad={() => {
-                                console.log('Image loaded successfully', {
-                                  url: media.url,
-                                  index,
-                                });
-                              }}
-                            />
-                          </div>
-                        ) : (
-                          <div className="relative w-full h-32 rounded-lg border bg-gray-100 flex items-center justify-center overflow-hidden">
-                            {media.thumbnail_url ? (
-                              <>
-                                <img
-                                  src={media.thumbnail_url}
-                                  alt="Video thumbnail"
-                                  className="w-full h-full object-cover rounded-lg"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                  <Video className="w-8 h-8 text-white" />
-                                </div>
-                              </>
-                            ) : (
-                              <Video className="w-8 h-8 text-gray-400" />
-                            )}
-                          </div>
-                        )}
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2 w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 z-10"
-                          onClick={() => removeMedia(index)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
+              
+              <div className="space-y-4 min-h-[400px]">
+                {/* Step 1: Content & Media */}
+                {postCreationStep === 1 && (
+                  <div className="space-y-4">
+                    <MentionInput
+                      value={newPostContent}
+                      onChange={setNewPostContent}
+                      placeholder="What's on your mind? Type @ to mention someone..."
+                      className="min-h-[200px]"
+                      maxLength={5000}
+                    />
                     
-                    {/* Show uploading files with progress */}
-                    {Object.entries(uploadProgress).map(([fileId, progress]) => (
-                      <div key={fileId} className="relative w-full h-32 rounded-lg border bg-gray-100 flex flex-col items-center justify-center">
-                        <Upload className="w-8 h-8 text-gray-400 mb-2 animate-pulse" />
-                        <div className="w-full px-2">
-                          <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
-                            <div
-                              className="bg-orange-500 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-gray-600 text-center">
-                            {progress}% uploading...
-                          </p>
+                    {/* File Upload */}
+                    <div className="space-y-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,video/*"
+                        multiple
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading || uploadedMedia.length >= 10}
+                        className="w-full"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {isUploading ? 'Uploading...' : 'Upload Images/Video'}
+                        {uploadedMedia.length > 0 && ` (${uploadedMedia.length}/10)`}
+                      </Button>
+
+                      {/* Media Previews */}
+                      {(uploadedMedia.length > 0 || Object.keys(uploadProgress).length > 0) && (
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          {/* Show uploaded media */}
+                          {uploadedMedia.map((media, index) => (
+                            <div key={`uploaded-${index}-${media.url}`} className="relative group">
+                              {media.type === 'image' ? (
+                                <div className="relative w-full h-32 rounded-lg border overflow-hidden bg-gray-100">
+                                  <img
+                                    src={media.url}
+                                    alt={`Upload ${index + 1}`}
+                                    className="w-full h-full object-cover"
+                                    onError={(e: { currentTarget: HTMLImageElement }) => {
+                                      console.error('Image load error', {
+                                        url: media.url,
+                                        index,
+                                        media,
+                                      });
+                                      const target = e.currentTarget;
+                                      target.style.display = 'none';
+                                      // Show error placeholder
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        parent.innerHTML = `
+                                          <div class="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                            <svg class="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <p class="text-xs">Failed to load</p>
+                                          </div>
+                                        `;
+                                      }
+                                    }}
+                                    onLoad={() => {
+                                      console.log('Image loaded successfully', {
+                                        url: media.url,
+                                        index,
+                                      });
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="relative w-full h-32 rounded-lg border bg-gray-100 flex items-center justify-center overflow-hidden">
+                                  {media.thumbnail_url ? (
+                                    <>
+                                      <img
+                                        src={media.thumbnail_url}
+                                        alt="Video thumbnail"
+                                        className="w-full h-full object-cover rounded-lg"
+                                      />
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                        <Video className="w-8 h-8 text-white" />
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <Video className="w-8 h-8 text-gray-400" />
+                                  )}
+                                </div>
+                              )}
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="absolute top-2 right-2 w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 z-10"
+                                onClick={() => removeMedia(index)}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          
+                          {/* Show uploading files with progress */}
+                          {Object.entries(uploadProgress).map(([fileId, progress]) => (
+                            <div key={fileId} className="relative w-full h-32 rounded-lg border bg-gray-100 flex flex-col items-center justify-center">
+                              <Upload className="w-8 h-8 text-gray-400 mb-2 animate-pulse" />
+                              <div className="w-full px-2">
+                                <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
+                                  <div
+                                    className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                                    style={{ width: `${progress}%` }}
+                                  />
+                                </div>
+                                <p className="text-xs text-gray-600 text-center">
+                                  {progress}% uploading...
+                                </p>
+                              </div>
+                            </div>
+                          ))}
                         </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <div className="text-sm text-gray-500">
+                        {newPostContent.length}/5000 characters
+                        {uploadedMedia.length > 0 && ` • ${uploadedMedia.length} media file(s)`}
                       </div>
-                    ))}
+                      <Button
+                        onClick={() => {
+                          if (!newPostContent.trim() && uploadedMedia.length === 0) {
+                            toast.error('Please add some content or media');
+                            return;
+                          }
+                          setPostCreationStep(2);
+                        }}
+                        disabled={isUploading}
+                        className="bg-orange-500 hover:bg-orange-600"
+                      >
+                        Next
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </div>
                   </div>
                 )}
-                </div>
 
-                {/* Visibility Selector */}
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700">Visibility:</label>
-                  <Select value={newPostVisibility} onValueChange={(value: 'public' | 'followers' | 'private') => setNewPostVisibility(value)}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="public">
-                        <div className="flex items-center gap-2">
-                          <Globe className="w-4 h-4" />
-                          <span>Public</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="followers">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          <span>Followers Only</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="private">
-                        <div className="flex items-center gap-2">
-                          <Lock className="w-4 h-4" />
-                          <span>Private</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Step 2: Visibility & Rewards */}
+                {postCreationStep === 2 && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-black">Post Settings</h3>
+                    
+                    {/* Visibility Selector */}
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">Visibility</label>
+                      <Select value={newPostVisibility} onValueChange={(value: 'public' | 'followers' | 'private') => setNewPostVisibility(value)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="public">
+                            <div className="flex items-center gap-2">
+                              <Globe className="w-4 h-4" />
+                              <span>Public - Everyone can see this post</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="followers">
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              <span>Followers Only - Only your followers can see</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="private">
+                            <div className="flex items-center gap-2">
+                              <Lock className="w-4 h-4" />
+                              <span>Private - Only you can see</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-500">
-                    {newPostContent.length}/5000 characters
-                    {uploadedMedia.length > 0 && ` • ${uploadedMedia.length} media file(s)`}
+                    {/* Reward Toggle */}
+                    <div className="border rounded-lg p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                            <Coins className="w-4 h-4" />
+                            Enable Rewards
+                          </label>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Allow users to earn coins for engaging with this post
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant={rewardEnabled ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            if (!walletCoins.length) {
+                              toast.error('Launch a creator coin before enabling rewards.');
+                              return;
+                            }
+                            setRewardEnabled(!rewardEnabled);
+                          }}
+                          disabled={walletCoins.length === 0 && !rewardEnabled}
+                          className={rewardEnabled ? "bg-orange-500 hover:bg-orange-600" : ""}
+                        >
+                          {rewardEnabled ? "Yes" : "No"}
+                        </Button>
+                      </div>
+                      {walletCoins.length === 0 && (
+                        <p className="text-xs text-red-500">
+                          You need to launch a creator coin and have balance before you can enable rewards.
+                        </p>
+                      )}
+
+                      {/* Reward Configuration */}
+                      {rewardEnabled && (
+                        <div className="space-y-4 pt-4 border-t">
+                          {/* Reward Coin Selection */}
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                                Reward Coin
+                              </label>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={fetchWalletCoins}
+                                disabled={isWalletCoinsLoading}
+                              >
+                                {isWalletCoinsLoading ? 'Refreshing...' : 'Refresh'}
+                              </Button>
+                            </div>
+                            {walletCoins.length > 0 ? (
+                              <Select value={rewardCoinSymbol} onValueChange={(value: string) => setRewardCoinSymbol(value)}>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {walletCoins.map((coin) => (
+                                    <SelectItem key={coin.coin_symbol} value={coin.coin_symbol}>
+                                      <div className="flex items-center justify-between w-full">
+                                        <span>{coin.coin_symbol}</span>
+                                        <span className="text-xs text-gray-500">{coin.balance} available</span>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <div className="rounded-md border border-dashed border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+                                No coins found. Launch a creator coin first.
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
+                              <span>
+                                Available: {selectedRewardCoinBalance} {rewardCoinSymbol}
+                              </span>
+                              {walletCoinsError && (
+                                <span className="text-red-500">{walletCoinsError}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Reward Pool */}
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 mb-1 block">
+                              Total Reward Pool (coins)
+                            </label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={rewardPool}
+                              onChange={(e: { target: { value: string } }) => setRewardPool(parseFloat(e.target.value) || 0)}
+                              placeholder="0.00"
+                              className="w-full"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              Total coins you're willing to spend on this post
+                            </p>
+                          </div>
+
+                          {/* Per-Action Rewards */}
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 mb-2 block">Reward Amounts</label>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className="text-xs text-gray-600 mb-1 block">Like</label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={rewardLikeAmount}
+                                  onChange={(e: { target: { value: string } }) => setRewardLikeAmount(parseFloat(e.target.value) || 0)}
+                                  className="w-full"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-600 mb-1 block">Comment</label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={rewardCommentAmount}
+                                  onChange={(e: { target: { value: string } }) => setRewardCommentAmount(parseFloat(e.target.value) || 0)}
+                                  className="w-full"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-600 mb-1 block">Share</label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={rewardShareAmount}
+                                  onChange={(e: { target: { value: string } }) => setRewardShareAmount(parseFloat(e.target.value) || 0)}
+                                  className="w-full"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Per-User Cap */}
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 mb-1 block">
+                              Max Coins Per User
+                            </label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={rewardPerUserCap}
+                              onChange={(e: { target: { value: string } }) => setRewardPerUserCap(parseFloat(e.target.value) || 0)}
+                              placeholder="10"
+                              className="w-full"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              Maximum coins a single user can earn from this post
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        onClick={() => setPostCreationStep(1)}
+                      >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (rewardEnabled) {
+                            if (!rewardCoinSymbol) {
+                              toast.error('Select a reward coin before continuing.');
+                              return;
+                            }
+                            if (walletCoins.length === 0) {
+                              toast.error('You need at least one creator coin to fund rewards.');
+                              return;
+                            }
+                            if (selectedRewardCoinBalance > 0 && rewardPool > selectedRewardCoinBalance) {
+                              toast.error(`You only have ${selectedRewardCoinBalance} ${rewardCoinSymbol} available.`);
+                              return;
+                            }
+                          }
+                          setPostCreationStep(3);
+                        }}
+                        className="bg-orange-500 hover:bg-orange-600"
+                      >
+                        Next
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setComposerOpen(false);
-                        setNewPostContent('');
-                        setNewPostVisibility('public');
-                        setUploadedMedia([]);
-                        setUploadProgress({});
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleCreatePost}
-                      disabled={(!newPostContent.trim() && uploadedMedia.length === 0) || isCreating || isUploading}
-                      className="bg-orange-500 hover:bg-orange-600"
-                    >
-                      {isCreating ? 'Posting...' : 'Post'}
-                    </Button>
+                )}
+
+                {/* Step 3: Review & Post */}
+                {postCreationStep === 3 && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-black">Review Your Post</h3>
+                    
+                    {/* Content Preview */}
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-medium text-gray-700">Content:</span>
+                        {newPostContent ? (
+                          <p className="text-sm text-gray-900 flex-1">{newPostContent.substring(0, 100)}{newPostContent.length > 100 ? '...' : ''}</p>
+                        ) : (
+                          <span className="text-sm text-gray-400 italic">No text content</span>
+                        )}
+                      </div>
+                      {uploadedMedia.length > 0 && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-sm font-medium text-gray-700">Media:</span>
+                          <span className="text-sm text-gray-600">{uploadedMedia.length} file(s)</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Settings Preview */}
+                    <div className="border rounded-lg p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Visibility:</span>
+                        <Badge variant="outline">
+                          {newPostVisibility === 'public' && <><Globe className="w-3 h-3 mr-1" />Public</>}
+                          {newPostVisibility === 'followers' && <><Users className="w-3 h-3 mr-1" />Followers Only</>}
+                          {newPostVisibility === 'private' && <><Lock className="w-3 h-3 mr-1" />Private</>}
+                        </Badge>
+                      </div>
+                      {rewardEnabled && (
+                        <div className="pt-2 border-t space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-700">Rewards:</span>
+                            <Badge className="bg-orange-100 text-orange-700">
+                              <Coins className="w-3 h-3 mr-1" />
+                              Enabled
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-gray-600 space-y-1">
+                            <p>Pool: {rewardPool} {rewardCoinSymbol}</p>
+                            <p>Like: {rewardLikeAmount} | Comment: {rewardCommentAmount} | Share: {rewardShareAmount}</p>
+                            <p>Max per user: {rewardPerUserCap} {rewardCoinSymbol}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        onClick={() => setPostCreationStep(2)}
+                      >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back
+                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setComposerOpen(false);
+                            setNewPostContent('');
+                            setNewPostVisibility('public');
+                            setRewardEnabled(false);
+                            setRewardPool(0);
+                            setRewardLikeAmount(1);
+                            setRewardCommentAmount(2);
+                            setRewardShareAmount(3);
+                            setRewardPerUserCap(10);
+                            setRewardCoinSymbol(
+                              (user?.default_coin_symbol ?? walletCoins[0]?.coin_symbol ?? 'FCN').toUpperCase()
+                            );
+                            setPostCreationStep(1);
+                            setUploadedMedia([]);
+                            setUploadProgress({});
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleCreatePost}
+                          disabled={(!newPostContent.trim() && uploadedMedia.length === 0) || isCreating || isUploading}
+                          className="bg-orange-500 hover:bg-orange-600"
+                        >
+                          {isCreating ? 'Posting...' : 'Post'}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
+
               </div>
             </DialogContent>
           </Dialog>
@@ -1439,11 +1876,11 @@ export function FeedSection() {
                     <Share2 className="w-5 h-5 mr-2" />
                     {postDetailPost.shares_count}
                   </Button>
-                  {postDetailPost.reward_enabled && (
-                    <Badge className="ml-auto bg-orange-100 text-orange-700">
-                      💰 {postDetailPost.reward_pool} coins
-                    </Badge>
-                  )}
+                        {postDetailPost.reward_enabled && (
+                          <Badge className="ml-auto bg-orange-100 text-orange-700">
+                            💰 {postDetailPost.reward_pool} {postDetailPost.reward_coin_symbol ?? 'coins'}
+                          </Badge>
+                        )}
                 </div>
               </Card>
               </div>

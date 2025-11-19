@@ -11,6 +11,13 @@ export type FeedPost = {
   shares_count: number;
   reward_enabled: boolean;
   reward_pool: number;
+  reward_coin_symbol?: string | null;
+  reward_rule?: {
+    like?: number;
+    comment?: number;
+    share?: number;
+    per_user_cap?: number;
+  } | null;
   is_liked: boolean;
   user: {
     id: string;
@@ -133,6 +140,13 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
     }>;
     reward_enabled?: boolean;
     reward_pool?: number;
+    reward_coin_symbol?: string;
+    reward_rule?: {
+      like?: number;
+      comment?: number;
+      share?: number;
+      per_user_cap?: number;
+    };
   }) => {
     setIsCreating(true);
     try {
