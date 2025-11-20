@@ -1,5 +1,14 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? 'http://localhost:8000/api';
+const IDEMPOTENT_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
+
+const generateIdempotencyKey = (): string => {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `idemp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
 
 const TOKEN_COOKIE = 'fancoin_auth_token';
 const TOKEN_STORAGE_KEY = 'fancoin_auth_token_storage';
@@ -99,6 +108,7 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const url = `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
     const headers = new Headers(options.headers);
+    const method = (options.method ?? 'GET').toUpperCase();
 
     headers.set('Accept', 'application/json');
 
@@ -112,8 +122,13 @@ class ApiClient {
       headers.set('Authorization', `Bearer ${this.token}`);
     }
 
+    if (IDEMPOTENT_METHODS.includes(method) && !headers.has('Idempotency-Key')) {
+      headers.set('Idempotency-Key', generateIdempotencyKey());
+    }
+
     const response = await fetch(url, {
       ...options,
+      method,
       headers,
       credentials: options.credentials ?? 'same-origin',
       body:

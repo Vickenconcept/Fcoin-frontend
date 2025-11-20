@@ -95,6 +95,7 @@ export function FeedSection() {
   const [postToShare, setPostToShare] = useState<FeedPost | null>(null);
   const { unreadCount } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [expandedPostContent, setExpandedPostContent] = useState<Record<string, boolean>>({});
 
   const openUserProfile = useCallback(
     (username?: string | null) => {
@@ -213,6 +214,51 @@ export function FeedSection() {
       setRewardToggleLoading(null);
     }
   }, [updatePost, postDetailPost]);
+
+  const togglePostExpansion = useCallback((postId: string) => {
+    setExpandedPostContent((prev) => ({
+      ...prev,
+      [postId]: !prev[postId],
+    }));
+  }, []);
+
+  const shouldClampContent = useCallback((content?: string | null) => {
+    if (!content) return false;
+    return content.trim().length > 220;
+  }, []);
+
+  const renderClampedContent = useCallback(
+    (
+      content: string,
+      key: string,
+      options: { textClass?: string; containerClass?: string } = {},
+    ) => {
+      const { textClass = 'text-black', containerClass = 'mb-4' } = options;
+      const shouldClamp = shouldClampContent(content);
+      const isExpanded = !!expandedPostContent[key];
+
+      return (
+        <div className={containerClass}>
+          <MentionText
+            text={content}
+            className={`${textClass} whitespace-pre-wrap ${
+              shouldClamp && !isExpanded ? 'line-clamp-3' : ''
+            }`}
+          />
+          {shouldClamp && (
+            <button
+              type="button"
+              className="mt-2 text-sm font-semibold text-orange-600 hover:text-orange-700 focus:outline-none"
+              onClick={() => togglePostExpansion(key)}
+            >
+              {isExpanded ? 'Show less' : 'Show more'}
+            </button>
+          )}
+        </div>
+      );
+    },
+    [expandedPostContent, shouldClampContent, togglePostExpansion],
+  );
 
 
   const handleFileUpload = async (file: File) => {
@@ -787,11 +833,11 @@ export function FeedSection() {
                       {post.user.display_name || post.user.username} shared a post
                     </span>
                   </div>
-                  {post.content && (
-                    <p className="text-sm text-gray-700 mb-2">
-                      <MentionText text={post.content} />
-                    </p>
-                  )}
+                  {post.content &&
+                    renderClampedContent(post.content, `${post.id}-share-note`, {
+                      textClass: 'text-sm text-gray-700',
+                      containerClass: 'mb-2',
+                    })}
                 </div>
               )}
 
@@ -834,11 +880,8 @@ export function FeedSection() {
                       </span>
                     </div>
                   </div>
-                  {post.shared_post.content && (
-                    <p className="text-black mb-4 whitespace-pre-wrap">
-                      <MentionText text={post.shared_post!.content} />
-                    </p>
-                  )}
+                  {post.shared_post.content &&
+                    renderClampedContent(post.shared_post.content, `shared-${post.shared_post.id}`)}
                   {post.shared_post!.media.length > 0 && (
                     <FeedMediaGrid
                       media={post.shared_post!.media}
@@ -849,11 +892,7 @@ export function FeedSection() {
               ) : (
                 <>
                   {/* Regular post content */}
-                  {post.content && (
-                    <p className="text-black mb-4 whitespace-pre-wrap">
-                      <MentionText text={post.content} />
-                    </p>
-                  )}
+                  {post.content && renderClampedContent(post.content, `post-${post.id}`)}
 
                   {/* Post Media */}
                   {post.media.length > 0 && (
