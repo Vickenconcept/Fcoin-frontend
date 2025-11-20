@@ -122,6 +122,12 @@ export default function UserProfilePage() {
   const [followingList, setFollowingList] = useState<FollowEntry[]>([]);
   const [followersLoading, setFollowersLoading] = useState(false);
   const [followingLoading, setFollowingLoading] = useState(false);
+  const [followersLoadingMore, setFollowersLoadingMore] = useState(false);
+  const [followingLoadingMore, setFollowingLoadingMore] = useState(false);
+  const [followersPage, setFollowersPage] = useState(1);
+  const [followingPage, setFollowingPage] = useState(1);
+  const [followersHasMore, setFollowersHasMore] = useState(true);
+  const [followingHasMore, setFollowingHasMore] = useState(true);
   const [followActionLoading, setFollowActionLoading] = useState<Record<string, boolean>>({});
   const [enableRewardsModalPost, setEnableRewardsModalPost] = useState<FeedPost | null>(null);
   const [walletCoins, setWalletCoins] = useState<Array<{ coin_symbol: string; balance: number }>>([]);
@@ -415,26 +421,44 @@ export default function UserProfilePage() {
   }, []);
 
   const fetchFollowList = useCallback(
-    async (type: 'followers' | 'following') => {
+    async (
+      type: 'followers' | 'following',
+      options: { page?: number; append?: boolean } = {},
+    ) => {
       if (!profile) return;
       const userId = profile.id;
-      if (type === 'followers') {
-        setFollowersLoading(true);
+      const page = options.page ?? 1;
+      const append = options.append ?? page > 1;
+      const setList = type === 'followers' ? setFollowersList : setFollowingList;
+      const setLoading = type === 'followers' ? setFollowersLoading : setFollowingLoading;
+      const setLoadingMore =
+        type === 'followers' ? setFollowersLoadingMore : setFollowingLoadingMore;
+      const setPage = type === 'followers' ? setFollowersPage : setFollowingPage;
+      const setHasMore =
+        type === 'followers' ? setFollowersHasMore : setFollowingHasMore;
+
+      if (page === 1 && !append) {
+        setLoading(true);
       } else {
-        setFollowingLoading(true);
+        setLoadingMore(true);
       }
 
       try {
-        const response = await apiClient.request<{ data: FollowEntry[] }>(
-          `/v1/users/${userId}/${type}?per_page=50`,
+        const response = await apiClient.request<FollowEntry[]>(
+          `/v1/users/${userId}/${type}?per_page=25&page=${page}`,
         );
 
-        if (response.ok && Array.isArray(response.data?.data)) {
-          const entries = response.data.data;
-          if (type === 'followers') {
-            setFollowersList(entries);
+        if (response.ok && Array.isArray(response.data)) {
+          setList((prev) => (append ? [...prev, ...response.data!] : response.data!));
+          setPage(page);
+
+          const pagination = response.meta?.pagination as
+            | { current_page?: number; last_page?: number }
+            | undefined;
+          if (pagination?.current_page && pagination?.last_page) {
+            setHasMore(pagination.current_page < pagination.last_page);
           } else {
-            setFollowingList(entries);
+            setHasMore(response.data.length > 0);
           }
         } else {
           toast.error('Unable to load list right now.');
@@ -443,10 +467,10 @@ export default function UserProfilePage() {
         console.error(`[Profile] load ${type} error`, error);
         toast.error('Unable to load list right now.');
       } finally {
-        if (type === 'followers') {
-          setFollowersLoading(false);
+        if (page === 1 && !append) {
+          setLoading(false);
         } else {
-          setFollowingLoading(false);
+          setLoadingMore(false);
         }
       }
     },
@@ -569,13 +593,17 @@ export default function UserProfilePage() {
   const openFollowersDirectory = useCallback(() => {
     if (!profile) return;
     setFollowersModalOpen(true);
-    fetchFollowList('followers').catch(() => null);
+    setFollowersPage(1);
+    setFollowersHasMore(true);
+    fetchFollowList('followers', { page: 1, append: false }).catch(() => null);
   }, [profile, fetchFollowList]);
 
   const openFollowingDirectory = useCallback(() => {
     if (!profile) return;
     setFollowingModalOpen(true);
-    fetchFollowList('following').catch(() => null);
+    setFollowingPage(1);
+    setFollowingHasMore(true);
+    fetchFollowList('following', { page: 1, append: false }).catch(() => null);
   }, [profile, fetchFollowList]);
 
   const closeFollowersDirectory = useCallback(() => setFollowersModalOpen(false), []);
@@ -596,6 +624,29 @@ export default function UserProfilePage() {
     },
     [navigate],
   );
+
+  const openProfileFromDirectory = useCallback(
+    (targetUsername: string, type: 'followers' | 'following') => {
+      if (!targetUsername) return;
+      if (type === 'followers') {
+        closeFollowersDirectory();
+      } else {
+        closeFollowingDirectory();
+      }
+      openProfile(targetUsername);
+    },
+    [closeFollowersDirectory, closeFollowingDirectory, openProfile],
+  );
+
+  const handleLoadMoreFollowers = useCallback(() => {
+    if (followersLoadingMore || !followersHasMore) return;
+    fetchFollowList('followers', { page: followersPage + 1, append: true }).catch(() => null);
+  }, [fetchFollowList, followersHasMore, followersLoadingMore, followersPage]);
+
+  const handleLoadMoreFollowing = useCallback(() => {
+    if (followingLoadingMore || !followingHasMore) return;
+    fetchFollowList('following', { page: followingPage + 1, append: true }).catch(() => null);
+  }, [fetchFollowList, followingHasMore, followingLoadingMore, followingPage]);
 
   const stats = useMemo(() => {
     if (!profile) return [];
@@ -1151,7 +1202,7 @@ export default function UserProfilePage() {
           }
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg bg-white">
           <DialogHeader>
             <DialogTitle>Followers</DialogTitle>
             <DialogDescription>People who follow this creator.</DialogDescription>
@@ -1176,7 +1227,11 @@ export default function UserProfilePage() {
                       key={entry.id}
                       className="flex items-center justify-between gap-3 rounded-lg border border-purple-50 bg-white px-3 py-2"
                     >
-                      <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        className="flex items-center gap-3 flex-1 text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 rounded-md"
+                        onClick={() => openProfileFromDirectory(entry.username, 'followers')}
+                      >
                         <Avatar className="w-10 h-10">
                           <AvatarImage src={entry.avatar_url || undefined} />
                           <AvatarFallback>
@@ -1189,7 +1244,7 @@ export default function UserProfilePage() {
                           </p>
                           <p className="text-xs text-slate-500">@{entry.username}</p>
                         </div>
-                      </div>
+                      </button>
                       {!isSelf && (
                         <Button
                           variant="outline"
@@ -1216,6 +1271,16 @@ export default function UserProfilePage() {
                     </div>
                   );
                 })}
+                {followersHasMore && (
+                  <Button
+                    variant="outline"
+                    onClick={handleLoadMoreFollowers}
+                    disabled={followersLoadingMore}
+                    className="w-full"
+                  >
+                    {followersLoadingMore ? 'Loading…' : 'Load more'}
+                  </Button>
+                )}
               </div>
             </ScrollArea>
           )}
@@ -1230,7 +1295,7 @@ export default function UserProfilePage() {
           }
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg bg-white">
           <DialogHeader>
             <DialogTitle>Following</DialogTitle>
             <DialogDescription>Creators this user is following.</DialogDescription>
@@ -1255,7 +1320,11 @@ export default function UserProfilePage() {
                       key={entry.id}
                       className="flex items-center justify-between gap-3 rounded-lg border border-purple-50 bg-white px-3 py-2"
                     >
-                      <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        className="flex items-center gap-3 flex-1 text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-200 rounded-md"
+                        onClick={() => openProfileFromDirectory(entry.username, 'following')}
+                      >
                         <Avatar className="w-10 h-10">
                           <AvatarImage src={entry.avatar_url || undefined} />
                           <AvatarFallback>
@@ -1268,7 +1337,7 @@ export default function UserProfilePage() {
                           </p>
                           <p className="text-xs text-slate-500">@{entry.username}</p>
                         </div>
-                      </div>
+                      </button>
                       {!isSelf && (
                         <Button
                           variant="outline"
@@ -1295,6 +1364,16 @@ export default function UserProfilePage() {
                     </div>
                   );
                 })}
+                {followingHasMore && (
+                  <Button
+                    variant="outline"
+                    onClick={handleLoadMoreFollowing}
+                    disabled={followingLoadingMore}
+                    className="w-full"
+                  >
+                    {followingLoadingMore ? 'Loading…' : 'Load more'}
+                  </Button>
+                )}
               </div>
             </ScrollArea>
           )}
