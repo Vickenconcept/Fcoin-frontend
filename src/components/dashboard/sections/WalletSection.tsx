@@ -7,8 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
-import { AlertTriangle, CheckCircle, Gift, Loader2, Sparkles, Wallet } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Gift, Loader2, Sparkles, Wallet, Banknote } from 'lucide-react';
 import { apiClient } from '../../../lib/apiClient';
+import { WithdrawalModal } from '../WithdrawalModal';
 
 type BasicChangeEvent = { target: { value: string } };
 type UsernameLookupResult = { id: string; username: string; display_name?: string | null };
@@ -41,6 +42,8 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
   const [usernameCheck, setUsernameCheck] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
   const [usernameInfo, setUsernameInfo] = useState<UsernameLookupResult | null>(null);
   const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
 
   const fetchWallet = useCallback(async () => {
     setIsLoading(true);
@@ -65,12 +68,26 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
         setCoinBalances(balances);
         setTransactions(response.data.transactions || []);
         setTransferCoinSymbol((prev) => (prev ? prev.toUpperCase() : primaryCoin));
+        
+        // Fetch withdrawals
+        fetchWithdrawals();
       }
     } catch (error) {
       console.error('Error fetching wallet:', error);
       toast.error('Unable to load wallet details.');
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  const fetchWithdrawals = useCallback(async () => {
+    try {
+      const response = await apiClient.request<any>('/v1/withdrawals');
+      if (response.ok && response.data) {
+        setWithdrawals(response.data.withdrawals || []);
+      }
+    } catch (error) {
+      console.error('Error fetching withdrawals:', error);
     }
   }, []);
 
@@ -281,13 +298,23 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
           >
             Manage Coins
           </Button>
-          <Button
-            variant="outline"
-            className="border-white text-white hover:bg-white/10"
-            onClick={() => setIsSendDialogOpen(true)}
-          >
-            Send Coins
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="border-white text-white hover:bg-white/10"
+              onClick={() => setIsSendDialogOpen(true)}
+            >
+              Send Coins
+            </Button>
+            <Button
+              variant="outline"
+              className="border-white text-white hover:bg-white/10"
+              onClick={() => setIsWithdrawDialogOpen(true)}
+            >
+              <Banknote className="w-4 h-4 mr-2" />
+              Withdraw
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -397,8 +424,18 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
         </DialogContent>
       </Dialog>
 
+      <WithdrawalModal
+        isOpen={isWithdrawDialogOpen}
+        onClose={() => setIsWithdrawDialogOpen(false)}
+        coinBalances={sortedCoinBalances}
+        onWithdrawalSuccess={() => {
+          fetchWallet();
+          fetchWithdrawals();
+        }}
+      />
+
       <Tabs defaultValue="balances" className="w-full">
-        <TabsList className="w-full grid grid-cols-2 gap-2 bg-purple-50/70 p-2 rounded-xl border border-purple-100">
+        <TabsList className="w-full grid grid-cols-3 gap-2 bg-purple-50/70 p-2 rounded-xl border border-purple-100">
           <TabsTrigger
             value="balances"
             className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=active]:shadow-sm"
@@ -414,7 +451,16 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
           >
             <div className="flex items-center justify-center gap-2">
               <Gift className="w-4 h-4" />
-              <span>Transaction History</span>
+              <span>Transactions</span>
+            </div>
+          </TabsTrigger>
+          <TabsTrigger
+            value="withdrawals"
+            className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=active]:shadow-sm"
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Banknote className="w-4 h-4" />
+              <span>Withdrawals</span>
             </div>
           </TabsTrigger>
         </TabsList>
@@ -533,6 +579,89 @@ export function WalletSection({ earnedCoinsDisplay }: WalletSectionProps) {
                       </div>
                       <div className="text-slate-600">
                         Balance → {Number(transaction.balance_after ?? 0).toLocaleString()}
+                      </div>
+                      <div className="text-right text-slate-500 text-xs sm:text-sm">{timestamp}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="withdrawals" className="space-y-4 mt-6">
+          <Card className="p-6 border-purple-100 bg-white">
+            <h4 className="text-slate-900 font-semibold mb-4">Withdrawal History</h4>
+            {isLoading ? (
+              <p className="text-slate-600">Loading withdrawals…</p>
+            ) : withdrawals.length === 0 ? (
+              <div className="text-center py-8">
+                <Banknote className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 mb-2">No withdrawals yet</p>
+                <p className="text-slate-400 text-sm">Your withdrawal history will appear here</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {withdrawals.slice(0, 10).map((withdrawal) => {
+                  const status = String(withdrawal.status ?? '').toUpperCase();
+                  const amount = Number(withdrawal.final_amount ?? 0);
+                  const coinAmount = Number(withdrawal.coin_amount ?? 0);
+                  const timestamp = withdrawal.created_at
+                    ? new Date(withdrawal.created_at).toLocaleString()
+                    : '';
+
+                  const statusColorClass = (() => {
+                    switch (status) {
+                      case 'SUCCESS':
+                        return 'bg-green-100 text-green-700';
+                      case 'PENDING':
+                      case 'PROCESSING':
+                        return 'bg-yellow-100 text-yellow-700';
+                      case 'FAILED':
+                      case 'CANCELLED':
+                        return 'bg-red-100 text-red-700';
+                      default:
+                        return 'bg-slate-100 text-slate-600';
+                    }
+                  })();
+
+                  const statusLabel = (() => {
+                    switch (status) {
+                      case 'SUCCESS':
+                        return 'Completed';
+                      case 'PENDING':
+                        return 'Pending';
+                      case 'PROCESSING':
+                        return 'Processing';
+                      case 'FAILED':
+                        return 'Failed';
+                      case 'CANCELLED':
+                        return 'Cancelled';
+                      default:
+                        return status;
+                    }
+                  })();
+
+                  return (
+                    <div
+                      key={withdrawal.id}
+                      className="grid gap-2 rounded-md border border-slate-200 p-3 text-sm sm:grid-cols-4 sm:items-center"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${statusColorClass}`}
+                        >
+                          {statusLabel}
+                        </span>
+                        <span className="font-medium text-slate-900">
+                          {coinAmount.toLocaleString()} {withdrawal.coin_symbol}
+                        </span>
+                      </div>
+                      <div className="text-slate-600">
+                        To: <span className="font-medium text-slate-900">{withdrawal.account_number}</span>
+                      </div>
+                      <div className="text-slate-600">
+                        Amount: <span className="font-medium text-green-600">₦{amount.toLocaleString()}</span>
                       </div>
                       <div className="text-right text-slate-500 text-xs sm:text-sm">{timestamp}</div>
                     </div>
