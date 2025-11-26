@@ -54,6 +54,7 @@ export function FeedSection() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [sortBy, setSortBy] = useState<'newest' | 'popular'>('newest');
+  
   const [composerOpen, setComposerOpen] = useState(false);
   const [commentModalOpen, setCommentModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null);
@@ -129,7 +130,9 @@ export function FeedSection() {
     isCommenting,
     isSharing,
     hasMore,
+    newPostsCount,
     loadMore,
+    loadNewPosts,
     createPost,
     toggleLike,
     addComment,
@@ -714,6 +717,21 @@ export function FeedSection() {
             </TabsTrigger>
           </TabsList>
         </Tabs>
+
+        {/* New Posts Notification */}
+        {newPostsCount > 0 && (
+          <div className="sticky top-4 z-10 flex justify-center mb-4">
+            <button
+              onClick={loadNewPosts}
+              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all duration-200 hover:scale-105"
+            >
+              <TrendingUp className="w-4 h-4" />
+              <span className="font-semibold">
+                {newPostsCount} new post{newPostsCount !== 1 ? 's' : ''}
+              </span>
+            </button>
+          </div>
+        )}
 
         {/* Feed Posts */}
         <div className="space-y-4">

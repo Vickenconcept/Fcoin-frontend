@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import toast from 'react-hot-toast';
 
@@ -83,8 +83,22 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
   const [isLiking, setIsLiking] = useState<string | null>(null);
   const [isCommenting, setIsCommenting] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState<string | null>(null);
+  
+  // Real-time updates state
+  const [newPostsCount, setNewPostsCount] = useState(0);
+  const [latestPostId, setLatestPostId] = useState<string | null>(null);
+  
+  // Use ref to avoid infinite loops with sortBy dependency
+  const sortByRef = useRef(sortBy);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  useEffect(() => {
+    sortByRef.current = sortBy;
+  }, [sortBy]);
 
   const loadFeed = useCallback(async (page = 1, isLoadingMore = false) => {
+    console.log('Frontend Feed: loadFeed called', { page, isLoadingMore, sortBy: sortByRef.current });
+
     if (page === 1) {
       setIsLoading(true);
     } else {
@@ -92,9 +106,9 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
     }
     
     try {
-      console.log('Feed: Loading feed', { sortBy, page, isLoadingMore });
+      console.log('Feed: Loading feed', { sortBy: sortByRef.current, page, isLoadingMore });
       const response = await apiClient.request<FeedPost[]>(
-        `/v1/feed?sort=${sortBy}&per_page=20&page=${page}`,
+        `/v1/feed?sort=${sortByRef.current}&per_page=20&page=${page}`,
         { method: 'GET' }
       );
 
@@ -110,6 +124,11 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
       if (response.ok && response.data) {
         if (page === 1) {
           setPosts(response.data);
+          // Track the latest post ID for real-time updates
+          if (response.data.length > 0) {
+            setLatestPostId(response.data[0].id);
+            setNewPostsCount(0); // Reset new posts count when refreshing
+          }
         } else {
           setPosts((prev) => [...prev, ...response.data!]);
         }
@@ -118,7 +137,8 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
           count: response.data.length, 
           totalPosts: page === 1 ? response.data.length : posts.length + response.data.length,
           currentPage: response.meta?.current_page,
-          lastPage: response.meta?.last_page
+          lastPage: response.meta?.last_page,
+          latestPostId: page === 1 && response.data.length > 0 ? response.data[0].id : latestPostId
         });
       } else {
         console.error('Feed: API Error', {
@@ -130,16 +150,52 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
       }
     } catch (error) {
       console.error('Feed: Exception loading feed', error);
-      toast.error('Failed to load feed');
+      
+      // Show specific error message based on error type
+      let errorMessage = 'Failed to load feed';
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorObj = error as { message: string };
+        if (errorObj.message.includes('Network Error') || errorObj.message.includes('connect')) {
+          errorMessage = 'Cannot connect to server. Please check your internet connection.';
+        } else if (errorObj.message.includes('timeout') || errorObj.message.includes('Timeout')) {
+          errorMessage = 'Request timed out. Please try again.';
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [sortBy, posts.length]);
+  }, []); // No dependencies to prevent infinite loops
 
+  // Test connectivity and load initial feed on component mount
   useEffect(() => {
+    const testConnectivity = async () => {
+      try {
+        console.log('Frontend Feed: Testing API connectivity...');
+        const response = await apiClient.request('/v1/auth/me', { method: 'GET' });
+        console.log('Frontend Feed: API connectivity test result:', {
+          ok: response.ok,
+          status: response.status
+        });
+      } catch (error) {
+        console.error('Frontend Feed: API connectivity test failed:', error);
+      }
+    };
+
+    testConnectivity();
     loadFeed(1);
-  }, [loadFeed]);
+    setIsInitialLoad(false);
+  }, []); // Only run once on mount
+  
+  // Separate effect for sortBy changes - reload feed when sort changes
+  useEffect(() => {
+    // Skip initial load since it's handled in the mount effect
+    if (!isInitialLoad) {
+      loadFeed(1);
+    }
+  }, [sortBy]); // Reload when sort changes
 
   const loadMore = useCallback(async () => {
     if (!meta || isLoadingMore || isLoading) return;
@@ -152,6 +208,40 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
   }, [meta, isLoadingMore, isLoading, loadFeed]);
 
   const hasMore = meta ? meta.current_page < meta.last_page : false;
+
+  // Check for new posts in the background
+  const checkForNewPosts = useCallback(async () => {
+    if (!latestPostId) return;
+    
+    try {
+      const response = await apiClient.request<{ count: number; has_new_posts: boolean }>(
+        `/v1/feed/new-count?after=${latestPostId}`,
+        { method: 'GET' }
+      );
+      
+      if (response.ok && response.data && response.data.has_new_posts) {
+        setNewPostsCount(response.data.count);
+        console.log('Feed: New posts available', { count: response.data.count });
+      }
+    } catch (error) {
+      console.error('Feed: Error checking for new posts', error);
+    }
+  }, [latestPostId]);
+
+  // Set up background polling for new posts
+  useEffect(() => {
+    if (!latestPostId) return;
+    
+    const interval = setInterval(checkForNewPosts, 30000); // Check every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [checkForNewPosts, latestPostId]);
+
+  // Function to load new posts when user clicks the "new posts" button
+  const loadNewPosts = useCallback(async () => {
+    console.log('Feed: Loading new posts');
+    await loadFeed(1, false);
+  }, []);
 
   const createPost = useCallback(async (data: {
     content?: string;
@@ -438,9 +528,11 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
     isCommenting,
     isSharing,
     hasMore,
+    newPostsCount,
     loadFeed,
     loadMore,
-    reload: () => loadFeed(1),
+    loadNewPosts,
+    reload: useCallback(() => loadFeed(1), []),
     createPost,
     toggleLike,
     addComment,

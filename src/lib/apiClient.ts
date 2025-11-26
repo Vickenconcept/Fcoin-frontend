@@ -1,5 +1,9 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? 'http://localhost:8000/api';
+
+// Debug: Log the API URL being used
+console.log('🔗 Frontend API Base URL:', API_BASE_URL);
+console.log('🌐 import.meta.env.VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
 const IDEMPOTENT_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
 const generateIdempotencyKey = (): string => {
@@ -110,6 +114,8 @@ class ApiClient {
     const headers = new Headers(options.headers);
     const method = (options.method ?? 'GET').toUpperCase();
 
+    console.log('Frontend API: Making request', { url, method, hasToken: !!this.token });
+
     headers.set('Accept', 'application/json');
 
     const isFormData = options.body instanceof FormData;
@@ -126,37 +132,97 @@ class ApiClient {
       headers.set('Idempotency-Key', generateIdempotencyKey());
     }
 
-    const response = await fetch(url, {
-      ...options,
-      method,
-      headers,
-      credentials: options.credentials ?? 'same-origin',
-      body:
-        options.body && !isFormData && typeof options.body !== 'string'
-          ? JSON.stringify(options.body)
-          : options.body,
-    });
+    try {
+      // Add timeout using AbortController
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 10000); // 10 second timeout
 
-    let payload: any = null;
+      const response = await fetch(url, {
+        ...options,
+        method,
+        headers,
+        credentials: options.credentials ?? 'same-origin',
+        signal: controller.signal,
+        body:
+          options.body && !isFormData && typeof options.body !== 'string'
+            ? JSON.stringify(options.body)
+            : options.body,
+      });
 
-    const contentType = response.headers.get('content-type') ?? '';
+      clearTimeout(timeoutId);
 
-    if (contentType.includes('application/json')) {
-      try {
-        payload = await response.json();
-      } catch {
-        payload = null;
+      console.log('Frontend API: Response received', {
+        url,
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText
+      });
+
+      let payload: any = null;
+
+      const contentType = response.headers.get('content-type') ?? '';
+
+      if (contentType.includes('application/json')) {
+        try {
+          payload = await response.json();
+        } catch {
+          payload = null;
+        }
       }
-    }
 
-    return {
-      ok: response.ok,
-      status: response.status,
-      data: payload?.data,
-      errors: payload?.errors,
-      meta: payload?.meta,
-      raw: payload,
-    };
+      return {
+        ok: response.ok,
+        status: response.status,
+        data: payload?.data,
+        errors: payload?.errors,
+        meta: payload?.meta,
+        raw: payload,
+      };
+    } catch (error) {
+      console.error('Frontend API: Request failed', { url, error });
+
+      // Handle different types of errors
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          return {
+            ok: false,
+            status: 0,
+            errors: [
+              {
+                title: 'Request Timeout',
+                detail: 'The request timed out. Please check your internet connection and try again.',
+              },
+            ],
+          };
+        }
+
+        if (error.message.includes('fetch')) {
+          return {
+            ok: false,
+            status: 0,
+            errors: [
+              {
+                title: 'Network Error',
+                detail: 'Unable to connect to server. Please check your internet connection and ensure the backend is running.',
+              },
+            ],
+          };
+        }
+      }
+
+      return {
+        ok: false,
+        status: 0,
+        errors: [
+          {
+            title: 'Request Failed',
+            detail: error instanceof Error ? error.message : 'An unexpected error occurred',
+          },
+        ],
+      };
+    }
   }
 
   private loadToken(): string | null {
