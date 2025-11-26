@@ -223,9 +223,12 @@ export function WithdrawalModal({ isOpen, onClose, coinBalances, onWithdrawalSuc
     try {
       const response = await apiClient.request<WithdrawalCalculation>('/v1/withdrawals/calculate', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           coin_symbol: coinSymbol,
           coin_amount: parseFloat(coinAmount),
+        }),
+        headers: {
+          'Content-Type': 'application/json',
         },
       });
       
@@ -252,9 +255,12 @@ export function WithdrawalModal({ isOpen, onClose, coinBalances, onWithdrawalSuc
     try {
       const response = await apiClient.request<{ account_name: string }>('/v1/withdrawals/verify-account', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           account_number: accountNumber,
           bank_code: bankCode,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
         },
       });
       
@@ -281,12 +287,15 @@ export function WithdrawalModal({ isOpen, onClose, coinBalances, onWithdrawalSuc
     try {
       const response = await apiClient.request('/v1/withdrawals', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           coin_symbol: coinSymbol,
           coin_amount: parseFloat(coinAmount),
           bank_code: bankCode,
           account_number: accountNumber,
           account_name: accountName,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
         },
       });
       
@@ -399,7 +408,9 @@ export function WithdrawalModal({ isOpen, onClose, coinBalances, onWithdrawalSuc
               {/* US Dollar Option */}
               <button
                 onClick={() => {
-                  toast.info('USD withdrawals coming soon! We\'re working on global bank transfers.');
+                  toast('USD withdrawals coming soon! We\'re working on global bank transfers.', {
+                    icon: 'ℹ️',
+                  });
                 }}
                 className="relative p-6 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all group opacity-75"
               >
@@ -465,7 +476,7 @@ export function WithdrawalModal({ isOpen, onClose, coinBalances, onWithdrawalSuc
               <select
                 id="coin-select"
                 value={coinSymbol}
-                onChange={(e) => setCoinSymbol(e.target.value)}
+                onChange={(e: any) => setCoinSymbol(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 disabled={isCalculating}
               >
@@ -560,7 +571,7 @@ export function WithdrawalModal({ isOpen, onClose, coinBalances, onWithdrawalSuc
                 {!withdrawalCalculation.is_valid && (
                   <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-2">
                     <p className="text-red-700 text-sm">
-                      Minimum withdrawal amount is ₦{withdrawalCalculation.min_withdrawal.toLocaleString()}
+                      Minimum withdrawal amount is ₦{withdrawalCalculation.min_final_ngn.toLocaleString()}
                     </p>
                   </div>
                 )}

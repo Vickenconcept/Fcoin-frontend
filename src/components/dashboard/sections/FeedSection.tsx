@@ -28,6 +28,7 @@ import {
   Upload,
   Bell,
   Link as LinkIcon,
+  Loader2,
 } from 'lucide-react';
 import { useFeed, type FeedPost, type FeedComment } from '../hooks/useFeed';
 import { useAuth } from '@/context/AuthContext';
@@ -46,6 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { Globe, Users, Lock, Settings, Coins, ChevronDown, ChevronUp, ArrowRight, ArrowLeft, Check } from 'lucide-react';
 
 export function FeedSection() {
@@ -121,10 +123,13 @@ export function FeedSection() {
   const {
     posts,
     isLoading,
+    isLoadingMore,
     isCreating,
     isLiking,
     isCommenting,
     isSharing,
+    hasMore,
+    loadMore,
     createPost,
     toggleLike,
     addComment,
@@ -137,10 +142,18 @@ export function FeedSection() {
     reload: reloadFeed,
   } = useFeed(sortBy);
 
+  // Add infinite scroll
+  useInfiniteScroll({
+    hasMore,
+    isLoading: isLoadingMore,
+    onLoadMore: loadMore,
+    threshold: 300
+  });
+
   // Reload feed when user avatar changes
   useEffect(() => {
     if (user?.avatar_url) {
-      reloadFeed(1);
+      reloadFeed();
     }
   }, [user?.avatar_url, reloadFeed]);
 
@@ -988,6 +1001,24 @@ export function FeedSection() {
               </div>
             </Card>
           ))
+          )}
+          
+          {/* Loading More Indicator */}
+          {isLoadingMore && (
+            <Card className="p-6 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
+                <span className="text-gray-600">Loading more posts...</span>
+              </div>
+            </Card>
+          )}
+          
+          {/* End of Feed Indicator */}
+          {!hasMore && posts.length > 0 && (
+            <Card className="p-6 text-center">
+              <p className="text-gray-500">You've reached the end of the feed</p>
+              <p className="text-sm text-gray-400 mt-1">Check back later for new posts</p>
+            </Card>
           )}
         </div>
       </div>

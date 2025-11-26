@@ -78,15 +78,21 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [meta, setMeta] = useState<FeedMeta | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isLiking, setIsLiking] = useState<string | null>(null);
   const [isCommenting, setIsCommenting] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState<string | null>(null);
 
-  const loadFeed = useCallback(async (page = 1) => {
-    setIsLoading(true);
+  const loadFeed = useCallback(async (page = 1, isLoadingMore = false) => {
+    if (page === 1) {
+      setIsLoading(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+    
     try {
-      console.log('Feed: Loading feed', { sortBy, page });
+      console.log('Feed: Loading feed', { sortBy, page, isLoadingMore });
       const response = await apiClient.request<FeedPost[]>(
         `/v1/feed?sort=${sortBy}&per_page=20&page=${page}`,
         { method: 'GET' }
@@ -108,7 +114,12 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
           setPosts((prev) => [...prev, ...response.data!]);
         }
         setMeta(response.meta as FeedMeta);
-        console.log('Feed: Successfully loaded', { count: response.data.length });
+        console.log('Feed: Successfully loaded', { 
+          count: response.data.length, 
+          totalPosts: page === 1 ? response.data.length : posts.length + response.data.length,
+          currentPage: response.meta?.current_page,
+          lastPage: response.meta?.last_page
+        });
       } else {
         console.error('Feed: API Error', {
           status: response.status,
@@ -122,12 +133,25 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
       toast.error('Failed to load feed');
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
-  }, [sortBy]);
+  }, [sortBy, posts.length]);
 
   useEffect(() => {
     loadFeed(1);
   }, [loadFeed]);
+
+  const loadMore = useCallback(async () => {
+    if (!meta || isLoadingMore || isLoading) return;
+    
+    const nextPage = meta.current_page + 1;
+    if (nextPage <= meta.last_page) {
+      console.log('Feed: Loading more posts', { nextPage, lastPage: meta.last_page });
+      await loadFeed(nextPage, true);
+    }
+  }, [meta, isLoadingMore, isLoading, loadFeed]);
+
+  const hasMore = meta ? meta.current_page < meta.last_page : false;
 
   const createPost = useCallback(async (data: {
     content?: string;
@@ -408,12 +432,15 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
     posts,
     meta,
     isLoading,
+    isLoadingMore,
     isCreating,
     isLiking,
     isCommenting,
     isSharing,
+    hasMore,
     loadFeed,
-    reload: loadFeed,
+    loadMore,
+    reload: () => loadFeed(1),
     createPost,
     toggleLike,
     addComment,
