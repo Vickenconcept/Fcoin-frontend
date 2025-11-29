@@ -63,11 +63,22 @@ export function TikTokAccountsManager({
                       key={account.id}
                       className="flex items-start justify-between gap-4 rounded-lg border border-sky-100 bg-white p-4"
                     >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-slate-900 font-medium">{usernameLabel}</p>
-                          <Badge className="bg-sky-100 text-sky-600 border-sky-200">Creator</Badge>
-                        </div>
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        {account.provider_picture_url && (
+                          <img
+                            src={account.provider_picture_url}
+                            alt={account.provider_username || 'TikTok'}
+                            className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                            onError={(e: { currentTarget: HTMLImageElement }) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-slate-900 font-medium truncate">{usernameLabel}</p>
+                            <Badge className="bg-sky-100 text-sky-600 border-sky-200 flex-shrink-0">Creator</Badge>
+                          </div>
                         <p className="text-xs text-slate-500">
                           Account ID:{' '}
                           <span className="font-mono text-slate-700">
@@ -88,6 +99,7 @@ export function TikTokAccountsManager({
                               : '—'}
                           </span>
                         </p>
+                        </div>
                       </div>
                       <Button
                         variant="outline"

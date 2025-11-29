@@ -1220,12 +1220,24 @@ export function ProfileSection() {
                         </p>
                         {tiktokCreatorAccounts.slice(0, 2).map((entry) => (
                           <div key={entry.id} className="flex items-center justify-between gap-2">
-                            <span className="truncate">
-                              {entry.provider_username
-                                ? `${entry.provider_username.startsWith('@') ? '' : '@'}${entry.provider_username}`
-                                : entry.provider_user_id}
-                            </span>
-                            <span className="text-xs text-slate-400">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {entry.provider_picture_url && (
+                                <img
+                                  src={entry.provider_picture_url}
+                                  alt={entry.provider_username || 'TikTok'}
+                                  className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                                  onError={(e: { currentTarget: HTMLImageElement }) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              )}
+                              <span className="truncate">
+                                {entry.provider_username
+                                  ? `${entry.provider_username.startsWith('@') ? '' : '@'}${entry.provider_username}`
+                                  : entry.provider_user_id}
+                              </span>
+                            </div>
+                            <span className="text-xs text-slate-400 flex-shrink-0">
                               Connected {entry.connected_at ? new Date(entry.connected_at).toLocaleString() : '—'}
                             </span>
                           </div>
@@ -1246,6 +1258,16 @@ export function ProfileSection() {
                         <p className="text-xs font-semibold uppercase text-slate-500">Fan Profiles</p>
                         {tiktokFanAccounts.map((entry) => (
                           <div key={entry.id} className="flex items-center gap-2">
+                            {entry.provider_picture_url && (
+                              <img
+                                src={entry.provider_picture_url}
+                                alt={entry.provider_username || 'TikTok'}
+                                className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                                onError={(e: { currentTarget: HTMLImageElement }) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            )}
                             <span className="truncate">
                               {entry.provider_username
                                 ? `${entry.provider_username.startsWith('@') ? '' : '@'}${entry.provider_username}`
