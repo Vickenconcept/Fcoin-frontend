@@ -1212,16 +1212,65 @@ export function ProfileSection() {
                   </div>
                 )}
                 {isTikTok && isConnected && (
-                  <div className="mt-3 space-y-3 text-sm text-slate-600">
-                    {tiktokCreatorCount > 0 && (
-                      <div className="space-y-1">
+                  <div className="mt-3 space-y-2 text-sm text-slate-600">
+                    {/* Show primary TikTok account (creator first, then fan) like Facebook */}
+                    {(tiktokCreatorAccounts[0] || tiktokFanAccounts[0]) && (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {(() => {
+                            const account = tiktokCreatorAccounts[0] || tiktokFanAccounts[0];
+                            const pictureUrl = account?.provider_picture_url;
+                            
+                            return (
+                              <>
+                                {pictureUrl ? (
+                                  <img
+                                    src={pictureUrl}
+                                    alt={account?.provider_username || 'TikTok'}
+                                    className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                                    onError={(e: { currentTarget: HTMLImageElement }) => {
+                                      e.currentTarget.style.display = 'none';
+                                      const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                      if (fallback) fallback.style.display = 'flex';
+                                    }}
+                                  />
+                                ) : null}
+                                <div 
+                                  className={`w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center flex-shrink-0 ${pictureUrl ? 'hidden' : ''}`}
+                                >
+                                  <Music2 className="w-4 h-4 text-sky-600" />
+                                </div>
+                              </>
+                            );
+                          })()}
+                          <span className="truncate">
+                            {(() => {
+                              const account = tiktokCreatorAccounts[0] || tiktokFanAccounts[0];
+                              const username = account?.provider_username;
+                              if (!username) return account?.provider_user_id || 'TikTok';
+                              if (username.startsWith('TikTok User')) return username;
+                              return `${username.startsWith('@') ? '' : '@'}${username}`;
+                            })()}
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400 flex-shrink-0">
+                          Connected {(tiktokCreatorAccounts[0] || tiktokFanAccounts[0])?.connected_at 
+                            ? new Date((tiktokCreatorAccounts[0] || tiktokFanAccounts[0])!.connected_at!).toLocaleString() 
+                            : '—'}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Show additional accounts if there are more */}
+                    {tiktokCreatorCount > 1 && (
+                      <div className="space-y-1 pt-2 border-t border-slate-200">
                         <p className="text-xs font-semibold uppercase text-slate-500">
                           Creator Accounts
                         </p>
-                        {tiktokCreatorAccounts.slice(0, 2).map((entry) => (
+                        {tiktokCreatorAccounts.slice(1, 3).map((entry) => (
                           <div key={entry.id} className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                              {entry.provider_picture_url && (
+                              {entry.provider_picture_url ? (
                                 <img
                                   src={entry.provider_picture_url}
                                   alt={entry.provider_username || 'TikTok'}
@@ -1230,6 +1279,10 @@ export function ProfileSection() {
                                     e.currentTarget.style.display = 'none';
                                   }}
                                 />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center flex-shrink-0">
+                                  <Music2 className="w-4 h-4 text-sky-600" />
+                                </div>
                               )}
                               <span className="truncate">
                                 {entry.provider_username
@@ -1242,7 +1295,7 @@ export function ProfileSection() {
                             </span>
                           </div>
                         ))}
-                        {tiktokCreatorCount > 2 && (
+                        {tiktokCreatorCount > 3 && (
                           <button
                             type="button"
                             className="text-xs text-sky-600 hover:underline"
@@ -1253,24 +1306,33 @@ export function ProfileSection() {
                         )}
                       </div>
                     )}
-                    {tiktokFanCount > 0 && (
-                      <div className="space-y-1">
+                    
+                    {tiktokFanCount > 1 && (
+                      <div className="space-y-1 pt-2 border-t border-slate-200">
                         <p className="text-xs font-semibold uppercase text-slate-500">Fan Profiles</p>
-                        {tiktokFanAccounts.map((entry) => (
+                        {tiktokFanAccounts.slice(1).map((entry) => (
                           <div key={entry.id} className="flex items-center gap-2">
-                            {entry.provider_picture_url && (
+                            {entry.provider_picture_url ? (
                               <img
                                 src={entry.provider_picture_url}
                                 alt={entry.provider_username || 'TikTok'}
                                 className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                                 onError={(e: { currentTarget: HTMLImageElement }) => {
                                   e.currentTarget.style.display = 'none';
+                                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                                  if (fallback) fallback.style.display = 'flex';
                                 }}
                               />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center flex-shrink-0">
+                                <Music2 className="w-4 h-4 text-sky-600" />
+                              </div>
                             )}
                             <span className="truncate">
                               {entry.provider_username
-                                ? `${entry.provider_username.startsWith('@') ? '' : '@'}${entry.provider_username}`
+                                ? entry.provider_username.startsWith('TikTok User')
+                                  ? entry.provider_username
+                                  : `${entry.provider_username.startsWith('@') ? '' : '@'}${entry.provider_username}`
                                 : entry.provider_user_id}
                             </span>
                           </div>
