@@ -1112,16 +1112,52 @@ export function ProfileSection() {
                 {!isConnected && provider.description && !isFacebook && (
                   <p className="text-xs text-slate-500 mt-3">{provider.description}</p>
                 )}
+                {isFacebook && isConnected && primaryAccount && (
+                  <div className="mt-3 space-y-2 text-sm text-slate-600">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {primaryAccount.provider_picture_url && (
+                          <img
+                            src={primaryAccount.provider_picture_url}
+                            alt={primaryAccount.provider_username || 'Facebook'}
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                            onError={(e: { currentTarget: HTMLImageElement }) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        <span className="truncate">
+                          {primaryAccount.provider_username || primaryAccount.provider_user_id}
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400 flex-shrink-0">
+                        Connected {primaryAccount.connected_at ? new Date(primaryAccount.connected_at).toLocaleString() : '—'}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {isInstagram && isConnected && instagramAccounts.length > 0 && (
                   <div className="mt-3 space-y-2 text-sm text-slate-600">
                     {instagramAccounts.slice(0, 2).map((entry) => (
                       <div key={entry.id} className="flex items-center justify-between gap-2">
-                        <span className="truncate">
-                          {entry.provider_username
-                            ? `${entry.provider_username.startsWith('@') ? '' : '@'}${entry.provider_username}`
-                            : entry.provider_user_id}
-                        </span>
-                        <span className="text-xs text-slate-400">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {entry.provider_picture_url && (
+                            <img
+                              src={entry.provider_picture_url}
+                              alt={entry.provider_username || 'Instagram'}
+                              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                              onError={(e: { currentTarget: HTMLImageElement }) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          )}
+                          <span className="truncate">
+                            {entry.provider_username
+                              ? `${entry.provider_username.startsWith('@') ? '' : '@'}${entry.provider_username}`
+                              : entry.provider_user_id}
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400 flex-shrink-0">
                           Connected {entry.connected_at ? new Date(entry.connected_at).toLocaleString() : '—'}
                         </span>
                       </div>
@@ -1133,6 +1169,44 @@ export function ProfileSection() {
                         onClick={() => setIsInstagramManagerOpen(true)}
                       >
                         View all {instagramAccounts.length} accounts
+                      </button>
+                    )}
+                  </div>
+                )}
+                {isYouTube && isConnected && youtubeAccounts.length > 0 && (
+                  <div className="mt-3 space-y-2 text-sm text-slate-600">
+                    {youtubeAccounts.slice(0, 2).map((entry) => (
+                      <div key={entry.id} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {entry.provider_picture_url && (
+                            <img
+                              src={entry.provider_picture_url}
+                              alt={entry.provider_username || 'YouTube'}
+                              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                              onError={(e: { currentTarget: HTMLImageElement }) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          )}
+                          <span className="truncate">
+                            {entry.provider_username || entry.provider_user_id}
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400 flex-shrink-0">
+                          Connected {entry.connected_at ? new Date(entry.connected_at).toLocaleString() : '—'}
+                        </span>
+                      </div>
+                    ))}
+                    {youtubeAccounts.length > 2 && (
+                      <button
+                        type="button"
+                        className="text-xs text-red-600 hover:underline"
+                        onClick={() => {
+                          // Could add a YouTube manager modal if needed
+                          toast('Multiple YouTube accounts connected', { icon: 'ℹ️' });
+                        }}
+                      >
+                        View all {youtubeAccounts.length} channels
                       </button>
                     )}
                   </div>

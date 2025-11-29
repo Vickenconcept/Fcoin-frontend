@@ -96,8 +96,8 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
     sortByRef.current = sortBy;
   }, [sortBy]);
 
-  const loadFeed = useCallback(async (page = 1, isLoadingMore = false) => {
-    console.log('Frontend Feed: loadFeed called', { page, isLoadingMore, sortBy: sortByRef.current });
+  const loadFeed = useCallback(async (page = 1, isLoadingMore = false, overrideSort?: 'newest' | 'popular') => {
+    const currentSort = overrideSort || sortByRef.current;
 
     if (page === 1) {
       setIsLoading(true);
@@ -106,20 +106,11 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
     }
     
     try {
-      console.log('Feed: Loading feed', { sortBy: sortByRef.current, page, isLoadingMore });
       const response = await apiClient.request<FeedPost[]>(
-        `/v1/feed?sort=${sortByRef.current}&per_page=20&page=${page}`,
+        `/v1/feed?sort=${currentSort}&per_page=20&page=${page}`,
         { method: 'GET' }
       );
 
-      console.log('Feed: API Response', {
-        ok: response.ok,
-        status: response.status,
-        hasData: !!response.data,
-        dataLength: response.data?.length,
-        errors: response.errors,
-        meta: response.meta,
-      });
 
       if (response.ok && response.data) {
         if (page === 1) {
@@ -133,13 +124,6 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
           setPosts((prev) => [...prev, ...response.data!]);
         }
         setMeta(response.meta as FeedMeta);
-        console.log('Feed: Successfully loaded', { 
-          count: response.data.length, 
-          totalPosts: page === 1 ? response.data.length : posts.length + response.data.length,
-          currentPage: response.meta?.current_page,
-          lastPage: response.meta?.last_page,
-          latestPostId: page === 1 && response.data.length > 0 ? response.data[0].id : latestPostId
-        });
       } else {
         console.error('Feed: API Error', {
           status: response.status,
@@ -193,7 +177,7 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
   useEffect(() => {
     // Skip initial load since it's handled in the mount effect
     if (!isInitialLoad) {
-      loadFeed(1);
+    loadFeed(1);
     }
   }, [sortBy]); // Reload when sort changes
 
@@ -239,8 +223,9 @@ export function useFeed(sortBy: 'newest' | 'popular' = 'newest') {
 
   // Function to load new posts when user clicks the "new posts" button
   const loadNewPosts = useCallback(async () => {
-    console.log('Feed: Loading new posts');
-    await loadFeed(1, false);
+    // Use 'new-first' sorting to prioritize recent posts regardless of current sort mode
+    await loadFeed(1, false, 'new-first');
+    setNewPostsCount(0); // Reset new posts count after loading
   }, []);
 
   const createPost = useCallback(async (data: {

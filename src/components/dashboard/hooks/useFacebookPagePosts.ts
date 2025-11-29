@@ -74,16 +74,14 @@ export function useFacebookPagePosts() {
   );
 
   const sync = useCallback(
-    async (pageId: string, immediate = true) => {
+    async (pageId: string) => {
       if (!pageId) return;
 
       setIsSyncing(true);
       try {
+        // Sync always runs in background - return immediately
         const response = await apiClient.request(`/v1/oauth/facebook/pages/${pageId}/sync`, {
           method: 'POST',
-          body: {
-            mode: immediate ? 'immediate' : 'async',
-          },
         });
 
         if (!response.ok) {
@@ -91,14 +89,12 @@ export function useFacebookPagePosts() {
           return;
         }
 
-        toast.success(
-          response.meta?.message ??
-            (immediate ? 'Facebook Page synced successfully.' : 'Facebook Page sync scheduled.'),
-        );
-
-        if (immediate) {
-          await load(pageId, 1);
-        }
+        toast.success(response.meta?.message ?? 'Facebook Page sync scheduled.');
+        
+        // Reload posts after a short delay to show updated data
+        setTimeout(() => {
+          load(pageId, 1);
+        }, 2000);
       } catch (error) {
         console.error('[useFacebookPagePosts] sync error', error);
         toast.error('Failed to sync Facebook Page.');

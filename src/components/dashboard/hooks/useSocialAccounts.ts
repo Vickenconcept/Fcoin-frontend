@@ -14,6 +14,7 @@ export type SocialAccount = {
   provider: string;
   provider_user_id: string | null;
   provider_username: string | null;
+  provider_picture_url?: string | null;
   connected_at: string | null;
   last_synced_at: string | null;
 };

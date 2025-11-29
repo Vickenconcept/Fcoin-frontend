@@ -721,15 +721,20 @@ export function FeedSection() {
         {/* New Posts Notification */}
         {newPostsCount > 0 && (
           <div className="sticky top-4 z-10 flex justify-center mb-4">
-            <button
-              onClick={loadNewPosts}
-              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all duration-200 hover:scale-105"
-            >
-              <TrendingUp className="w-4 h-4" />
-              <span className="font-semibold">
-                {newPostsCount} new post{newPostsCount !== 1 ? 's' : ''}
-              </span>
-            </button>
+            <div className="flex flex-col items-center gap-2">
+              <button
+                onClick={loadNewPosts}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all duration-200 hover:scale-105"
+              >
+                <TrendingUp className="w-4 h-4" />
+                <span className="font-semibold">
+                  {newPostsCount} new post{newPostsCount !== 1 ? 's' : ''}
+                </span>
+              </button>
+              <p className="text-xs text-gray-500 text-center max-w-xs">
+                Click to see new posts at the top
+              </p>
+            </div>
           </div>
         )}
 

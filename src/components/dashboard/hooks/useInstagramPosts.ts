@@ -100,13 +100,13 @@ export function useInstagramPosts() {
   }, [selectedAccountId]);
 
   const sync = useCallback(
-    async (immediate = true, limit?: number, accountId?: string | null) => {
+    async (limit?: number, accountId?: string | null) => {
       setIsSyncing(true);
       try {
+        // Sync always runs in background - return immediately
         const response = await apiClient.request('/v1/oauth/instagram/posts/sync', {
           method: 'POST',
           body: {
-            mode: immediate ? 'immediate' : 'async',
             limit,
             account_id: accountId ?? selectedAccountId ?? undefined,
           } as any,
@@ -117,14 +117,12 @@ export function useInstagramPosts() {
           return;
         }
 
-        toast.success(
-          response.meta?.message ??
-            (immediate ? 'Instagram account synced successfully.' : 'Instagram sync scheduled.'),
-        );
-
-        if (immediate) {
-          await load(accountId ?? selectedAccountId ?? null);
-        }
+        toast.success(response.meta?.message ?? 'Instagram sync scheduled.');
+        
+        // Reload posts after a short delay to show updated data
+        setTimeout(() => {
+          load(accountId ?? selectedAccountId ?? null);
+        }, 2000);
       } catch (error) {
         console.error('[useInstagramPosts] sync error', error);
         toast.error('Failed to sync Instagram account.');

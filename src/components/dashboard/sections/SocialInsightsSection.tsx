@@ -235,7 +235,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
   const handleSync = (id: string | null) => {
     if (!id) return;
 
-    syncPage(id, true).catch((error: unknown) => console.error('[SocialInsightsSection] syncPage', error));
+    syncPage(id).catch((error: unknown) => console.error('[SocialInsightsSection] syncPage', error));
   };
 
   const applyFilters = useCallback(
@@ -993,7 +993,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                     variant="outline"
                     className="border-orange-200 text-orange-600 hover:bg-orange-50"
                     disabled={isInstagramSyncing || !effectiveInstagramAccountId}
-                    onClick={() => syncInstagram(true, undefined, effectiveInstagramAccountId)}
+                    onClick={() => syncInstagram(undefined, effectiveInstagramAccountId)}
                   >
                     <RefreshCcw className="w-4 h-4 mr-2" />
                     {isInstagramSyncing ? 'Syncing…' : 'Sync Instagram'}
@@ -1101,7 +1101,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                   <Button
                     className="bg-orange-500 text-white hover:bg-orange-600"
                     disabled={isInstagramSyncing}
-                    onClick={() => syncInstagram(true, undefined, effectiveInstagramAccountId)}
+                    onClick={() => syncInstagram(undefined, effectiveInstagramAccountId)}
                   >
                     {isInstagramSyncing ? 'Syncing…' : 'Sync Instagram'}
                   </Button>
@@ -1182,7 +1182,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                     variant="outline"
                     className="border-sky-200 text-sky-600 hover:bg-sky-50"
                     disabled={isTikTokSyncing || !effectiveTikTokAccountId}
-                    onClick={() => syncTikTok(true, undefined, effectiveTikTokAccountId)}
+                    onClick={() => syncTikTok(undefined, effectiveTikTokAccountId)}
                   >
                     <RefreshCcw className="w-4 h-4 mr-2" />
                     {isTikTokSyncing ? 'Syncing…' : 'Sync TikTok'}
@@ -1291,7 +1291,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                   <Button
                     className="bg-sky-500 text-white hover:bg-sky-600"
                     disabled={isTikTokSyncing}
-                    onClick={() => syncTikTok(true, undefined, effectiveTikTokAccountId)}
+                    onClick={() => syncTikTok(undefined, effectiveTikTokAccountId)}
                   >
                     {isTikTokSyncing ? 'Syncing…' : 'Sync TikTok'}
                   </Button>
@@ -1321,7 +1321,15 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
             <>
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
-                  <Youtube className="h-5 w-5 text-red-500" />
+                  {selectedYouTubeAccountMeta?.page?.picture_url ? (
+                    <img
+                      src={selectedYouTubeAccountMeta.page.picture_url}
+                      alt={selectedYouTubeAccountMeta.youtube_channel_title ?? 'YouTube channel'}
+                      className="h-10 w-10 rounded-full object-cover border-2 border-red-200"
+                    />
+                  ) : (
+                    <Youtube className="h-5 w-5 text-red-500" />
+                  )}
                   <div>
                     <h3 className="text-slate-900 text-lg font-semibold">YouTube Channel</h3>
                     <p className="text-sm text-slate-500">
@@ -1366,7 +1374,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                     variant="outline"
                     className="border-red-200 text-red-600 hover:bg-red-50"
                     disabled={isYouTubeSyncing || !effectiveYouTubeAccountId}
-                    onClick={() => syncYouTube(true, undefined, effectiveYouTubeAccountId)}
+                    onClick={() => syncYouTube(undefined, effectiveYouTubeAccountId)}
                   >
                     <RefreshCcw className="w-4 h-4 mr-2" />
                     {isYouTubeSyncing ? 'Syncing…' : 'Sync YouTube'}
@@ -1473,7 +1481,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                   <Button
                     className="bg-red-500 text-white hover:bg-red-600"
                     disabled={isYouTubeSyncing}
-                    onClick={() => syncYouTube(true, undefined, effectiveYouTubeAccountId)}
+                    onClick={() => syncYouTube(undefined, effectiveYouTubeAccountId)}
                   >
                     {isYouTubeSyncing ? 'Syncing…' : 'Sync YouTube'}
                   </Button>

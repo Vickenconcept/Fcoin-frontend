@@ -2,7 +2,7 @@ import { Sparkles, TrendingUp, Users, Zap, Youtube, Instagram, Facebook, Coins, 
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -378,9 +378,9 @@ export default function LandingPage() {
             <div>
               <p className="text-slate-900 mb-4">Legal</p>
               <ul className="space-y-2 text-slate-600">
-                <li><a href="#" className="hover:text-purple-600">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-purple-600">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-purple-600">Cookie Policy</a></li>
+                <li><Link to="/terms-and-conditions" className="hover:text-purple-600">Terms of Service</Link></li>
+                <li><Link to="/privacy-policy" className="hover:text-purple-600">Privacy Policy</Link></li>
+                <li><Link to="/privacy-policy" className="hover:text-purple-600">Cookie Policy</Link></li>
               </ul>
             </div>
           </div>

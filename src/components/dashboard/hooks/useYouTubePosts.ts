@@ -102,13 +102,13 @@ export function useYouTubePosts() {
   );
 
   const sync = useCallback(
-    async (immediate = true, limit?: number, accountId?: string | null) => {
+    async (limit?: number, accountId?: string | null) => {
       setIsSyncing(true);
       try {
+        // Sync always runs in background - return immediately
         const response = await apiClient.request('/v1/oauth/youtube/posts/sync', {
           method: 'POST',
           body: {
-            mode: immediate ? 'immediate' : 'async',
             limit,
             account_id: accountId ?? selectedAccountId ?? undefined,
           } as any,
@@ -119,14 +119,12 @@ export function useYouTubePosts() {
           return;
         }
 
-        toast.success(
-          response.meta?.message ??
-            (immediate ? 'YouTube account synced successfully.' : 'YouTube sync scheduled.'),
-        );
-
-        if (immediate) {
-          await load(accountId ?? selectedAccountId ?? null);
-        }
+        toast.success(response.meta?.message ?? 'YouTube sync scheduled.');
+        
+        // Reload posts after a short delay to show updated data
+        setTimeout(() => {
+          load(accountId ?? selectedAccountId ?? null);
+        }, 2000);
       } catch (error) {
         console.error('[useYouTubePosts] sync error', error);
         toast.error('Failed to sync YouTube account.');

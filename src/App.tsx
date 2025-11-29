@@ -4,6 +4,8 @@ import Dashboard from './components/Dashboard';
 import AuthFlow from './components/AuthFlow';
 import AdminCoinValuesPage from './components/admin/AdminCoinValuesPage';
 import UserProfilePage from './components/profile/UserProfilePage';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsAndConditions from './components/TermsAndConditions';
 import { useAuth } from '@/context/AuthContext';
 
 function LoadingScreen() {
@@ -90,6 +92,8 @@ export default function App() {
             </RequireAuth>
           }
         />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
