@@ -139,11 +139,38 @@ class ApiClient {
         controller.abort();
       }, 10000); // 10 second timeout
 
+      // Determine credentials mode based on whether we're in production or local
+      // For production (phanrise.com), use 'include' for cross-origin requests
+      // For local development, use 'same-origin'
+      let credentialsMode = options.credentials;
+      if (!credentialsMode && typeof window !== 'undefined') {
+        const isProduction = window.location.hostname === 'phanrise.com' || window.location.hostname === 'www.phanrise.com';
+        try {
+          const apiOrigin = new URL(API_BASE_URL).origin;
+          const currentOrigin = window.location.origin;
+          const isCrossOrigin = currentOrigin !== apiOrigin;
+          
+          // Use 'include' only for production cross-origin requests
+          // Use 'same-origin' for localhost or same-origin requests
+          if (isProduction && isCrossOrigin) {
+            credentialsMode = 'include';
+          } else {
+            credentialsMode = 'same-origin';
+          }
+        } catch (e) {
+          // If URL parsing fails, default to same-origin
+          console.warn('Failed to parse API_BASE_URL for credentials mode:', e);
+          credentialsMode = 'same-origin';
+        }
+      } else if (!credentialsMode) {
+        credentialsMode = 'same-origin';
+      }
+
       const response = await fetch(url, {
         ...options,
         method,
         headers,
-        credentials: options.credentials ?? 'same-origin',
+        credentials: credentialsMode,
         signal: controller.signal,
         body:
           options.body && !isFormData && typeof options.body !== 'string'
@@ -181,7 +208,7 @@ class ApiClient {
         raw: payload,
       };
     } catch (error) {
-      console.error('Frontend API: Request failed', { url, error });
+      console.error('Frontend API: Request failed', { url, error, errorType: error instanceof Error ? error.name : typeof error });
 
       // Handle different types of errors
       if (error instanceof Error) {
@@ -198,14 +225,29 @@ class ApiClient {
           };
         }
 
-        if (error.message.includes('fetch')) {
+        // Check for CORS errors
+        if (error.message.includes('CORS') || error.message.includes('cross-origin') || error.message.includes('Access-Control')) {
+          return {
+            ok: false,
+            status: 0,
+            errors: [
+              {
+                title: 'CORS Error',
+                detail: `Cross-origin request blocked. Please check CORS configuration on the backend. URL: ${url}`,
+              },
+            ],
+          };
+        }
+
+        // Check for network errors
+        if (error.message.includes('fetch') || error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
           return {
             ok: false,
             status: 0,
             errors: [
               {
                 title: 'Network Error',
-                detail: 'Unable to connect to server. Please check your internet connection and ensure the backend is running.',
+                detail: `Unable to connect to server at ${url}. Please ensure the backend is running and accessible.`,
               },
             ],
           };
