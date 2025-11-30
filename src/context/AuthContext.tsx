@@ -9,35 +9,63 @@ import {
   registerUser,
 } from '@/services/auth';
 
-const AUTH_USER_STORAGE_KEY = 'phanrise_auth_user_storage';
+const AUTH_USER_COOKIE = 'phanrise_auth_user';
+const USER_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function setCookie(name: string, value: string, maxAgeSeconds?: number) {
+  if (typeof document === 'undefined') return;
+  const parts = [
+    `${name}=${encodeURIComponent(value)}`,
+    'Path=/',
+    'SameSite=Lax',
+  ];
+  if (maxAgeSeconds) {
+    parts.push(`Max-Age=${maxAgeSeconds}`);
+  }
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    parts.push('Secure');
+  }
+  document.cookie = parts.join('; ');
+}
+
+function deleteCookie(name: string) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
+}
 
 function loadStoredUser(): AuthUser | null {
-  if (typeof window === 'undefined') {
+  if (typeof document === 'undefined') {
     return null;
   }
 
   try {
-    const value = window.localStorage.getItem(AUTH_USER_STORAGE_KEY);
+    const value = getCookie(AUTH_USER_COOKIE);
     return value ? (JSON.parse(value) as AuthUser) : null;
   } catch (error) {
     console.error('Failed to parse stored auth user', error);
-    window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    deleteCookie(AUTH_USER_COOKIE);
     return null;
   }
 }
 
 function storeAuthUser(user: AuthUser | null) {
-  if (typeof window === 'undefined') {
+  if (typeof document === 'undefined') {
     return;
   }
 
   if (!user) {
-    window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    deleteCookie(AUTH_USER_COOKIE);
     return;
   }
 
   try {
-    window.localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
+    setCookie(AUTH_USER_COOKIE, JSON.stringify(user), USER_COOKIE_MAX_AGE_SECONDS);
   } catch (error) {
     console.error('Failed to persist auth user', error);
   }
