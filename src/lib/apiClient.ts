@@ -143,7 +143,7 @@ class ApiClient {
         ...options,
         method,
         headers,
-        credentials: options.credentials ?? 'include',
+        credentials: options.credentials ?? 'same-origin',
         signal: controller.signal,
         body:
           options.body && !isFormData && typeof options.body !== 'string'
