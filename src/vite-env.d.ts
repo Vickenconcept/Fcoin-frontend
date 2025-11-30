@@ -1,5 +1,13 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly VITE_API_BASE_URL?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 declare module 'react' {
   export type Dispatch<A> = (value: A) => void;
   export type SetStateAction<S> = S | ((prevState: S) => S);
