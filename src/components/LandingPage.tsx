@@ -17,7 +17,7 @@ export default function LandingPage() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              FanCoin
+              Phanrise
             </span>
           </div>
           <div className="flex gap-4">
@@ -349,7 +349,7 @@ export default function LandingPage() {
                   <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  FanCoin
+                  Phanrise
                 </span>
               </div>
               <p className="text-slate-600">
@@ -386,7 +386,7 @@ export default function LandingPage() {
           </div>
           
           <div className="border-t border-purple-100 mt-12 pt-8 text-center text-slate-600">
-            <p>© 2025 FanCoin. All rights reserved.</p>
+            <p>© 2025 Phanrise. All rights reserved.</p>
           </div>
         </div>
       </footer>

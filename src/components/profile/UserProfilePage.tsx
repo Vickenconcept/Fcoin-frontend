@@ -714,8 +714,8 @@ export default function UserProfilePage() {
     if (navigator.share) {
       navigator
         .share({
-          title: profile?.display_name ?? profile?.username ?? 'FanCoin profile',
-          text: 'Check out this FanCoin creator profile',
+          title: profile?.display_name ?? profile?.username ?? 'Phanrise profile',
+          text: 'Check out this Phanrise creator profile',
           url: profileLink,
         })
         .catch(() => {
@@ -733,13 +733,13 @@ export default function UserProfilePage() {
       let shareUrl = profileLink;
       if (platform === 'twitter') {
         shareUrl = `https://twitter.com/intent/tweet?url=${encoded}&text=${encodeURIComponent(
-          'Follow me on FanCoin',
+          'Follow me on Phanrise',
         )}`;
       } else if (platform === 'facebook') {
         shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encoded}`;
       } else if (platform === 'whatsapp') {
         shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(
-          `Follow me on FanCoin: ${profileLink}`,
+          `Follow me on Phanrise: ${profileLink}`,
         )}`;
       }
       window.open(shareUrl, '_blank', 'noopener,noreferrer');

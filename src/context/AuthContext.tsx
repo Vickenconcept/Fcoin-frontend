@@ -9,7 +9,7 @@ import {
   registerUser,
 } from '@/services/auth';
 
-const AUTH_USER_STORAGE_KEY = 'fancoin_auth_user_storage';
+const AUTH_USER_STORAGE_KEY = 'phanrise_auth_user_storage';
 
 function loadStoredUser(): AuthUser | null {
   if (typeof window === 'undefined') {

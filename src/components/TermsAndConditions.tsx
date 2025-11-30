@@ -15,7 +15,7 @@ export default function TermsAndConditions() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              FanCoin
+              Phanrise
             </span>
           </div>
           <Button variant="ghost" onClick={() => navigate(-1)}>
@@ -40,7 +40,7 @@ export default function TermsAndConditions() {
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">1. Acceptance of Terms</h2>
               <p className="text-slate-700 leading-relaxed">
-                By accessing and using the <strong>FanCoin</strong> mobile and web application ("Service"), you accept and agree to be bound by the terms and provision of this agreement. 
+                By accessing and using the <strong>Phanrise</strong> mobile and web application ("Service"), you accept and agree to be bound by the terms and provision of this agreement. 
                 If you do not agree to abide by the above, please do not use this service.
               </p>
             </section>
@@ -48,7 +48,7 @@ export default function TermsAndConditions() {
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">2. Description of Service</h2>
               <p className="text-slate-700 leading-relaxed mb-4">
-                FanCoin is a platform that allows creators to launch branded coins and reward their supporters based on engagement with their social media content. 
+                Phanrise is a platform that allows creators to launch branded coins and reward their supporters based on engagement with their social media content. 
                 The Service includes:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
@@ -65,7 +65,7 @@ export default function TermsAndConditions() {
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">3. User Accounts</h2>
               <h3 className="text-xl font-semibold text-slate-900 mb-3">3.1 Account Creation</h3>
               <p className="text-slate-700 leading-relaxed mb-4">
-                To use FanCoin, you must:
+                To use Phanrise, you must:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
                 <li>Be at least 13 years of age (or the age of majority in your jurisdiction)</li>
@@ -84,13 +84,13 @@ export default function TermsAndConditions() {
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">4. Creator Responsibilities</h2>
               <p className="text-slate-700 leading-relaxed mb-4">
-                If you are a creator using FanCoin to launch your coin:
+                If you are a creator using Phanrise to launch your coin:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
                 <li>You must pay the required launch fee and fund your reward pool before your coin becomes active</li>
                 <li>You are responsible for setting appropriate coin distribution rates</li>
-                <li>You must ensure you have the right to connect and use the social media accounts you link to FanCoin</li>
-                <li>You grant FanCoin permission to access and track engagement on your connected social media accounts</li>
+                <li>You must ensure you have the right to connect and use the social media accounts you link to Phanrise</li>
+                <li>You grant Phanrise permission to access and track engagement on your connected social media accounts</li>
                 <li>You understand that coins are distributed automatically based on tracked engagement</li>
                 <li>You are responsible for maintaining sufficient funds in your reward pool</li>
                 <li>You agree not to manipulate or artificially inflate engagement metrics</li>
@@ -103,7 +103,7 @@ export default function TermsAndConditions() {
                 If you are a supporter earning coins:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
-                <li>You must be a registered user and follow the creator in the FanCoin app to earn coins</li>
+                <li>You must be a registered user and follow the creator in the Phanrise app to earn coins</li>
                 <li>Coins are earned based on verified engagement (likes, comments, shares, views) on creator content</li>
                 <li>Engagement must occur on the creator's connected social media accounts</li>
                 <li>You agree not to use automated tools, bots, or other methods to artificially inflate engagement</li>
@@ -129,7 +129,7 @@ export default function TermsAndConditions() {
                 Supporters may withdraw their coins subject to:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
-                <li>Minimum withdrawal amounts as set by FanCoin</li>
+                <li>Minimum withdrawal amounts as set by Phanrise</li>
                 <li>Verification requirements for security purposes</li>
                 <li>Processing fees as disclosed at the time of withdrawal</li>
                 <li>Processing times as specified in the withdrawal interface</li>
@@ -137,20 +137,20 @@ export default function TermsAndConditions() {
 
               <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">6.3 Refunds</h3>
               <p className="text-slate-700 leading-relaxed">
-                Launch fees and reward pool funding are generally non-refundable. Refunds may be considered on a case-by-case basis at FanCoin's sole discretion.
+                Launch fees and reward pool funding are generally non-refundable. Refunds may be considered on a case-by-case basis at Phanrise's sole discretion.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">7. Social Media Integration</h2>
               <p className="text-slate-700 leading-relaxed mb-4">
-                By connecting your social media accounts to FanCoin, you:
+                By connecting your social media accounts to Phanrise, you:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
-                <li>Grant FanCoin permission to access your social media accounts through the respective platform APIs</li>
-                <li>Authorize FanCoin to read engagement data, insights, and public content as necessary to provide the Service</li>
+                <li>Grant Phanrise permission to access your social media accounts through the respective platform APIs</li>
+                <li>Authorize Phanrise to read engagement data, insights, and public content as necessary to provide the Service</li>
                 <li>Agree to comply with the terms of service of the social media platforms you connect</li>
-                <li>Understand that FanCoin's access is subject to the permissions granted by the social media platform</li>
+                <li>Understand that Phanrise's access is subject to the permissions granted by the social media platform</li>
                 <li>May disconnect your accounts at any time through your account settings</li>
               </ul>
             </section>
@@ -176,10 +176,10 @@ export default function TermsAndConditions() {
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">9. Intellectual Property</h2>
               <p className="text-slate-700 leading-relaxed mb-4">
-                The Service and its original content, features, and functionality are owned by FanCoin and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
+                The Service and its original content, features, and functionality are owned by Phanrise and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
               </p>
               <p className="text-slate-700 leading-relaxed">
-                You retain ownership of any content you create or upload to the Service. By using the Service, you grant FanCoin a license to use, display, and distribute your content as necessary to provide the Service.
+                You retain ownership of any content you create or upload to the Service. By using the Service, you grant Phanrise a license to use, display, and distribute your content as necessary to provide the Service.
               </p>
             </section>
 
@@ -195,14 +195,14 @@ export default function TermsAndConditions() {
                 <li>Any warranty that social media platform APIs will be continuously available or accessible</li>
               </ul>
               <p className="text-slate-700 leading-relaxed mt-4">
-                FanCoin does not guarantee that engagement tracking will be 100% accurate or that all engagement will be detected and rewarded.
+                Phanrise does not guarantee that engagement tracking will be 100% accurate or that all engagement will be detected and rewarded.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">11. Limitation of Liability</h2>
               <p className="text-slate-700 leading-relaxed mb-4">
-                TO THE MAXIMUM EXTENT PERMITTED BY LAW, FANCOIN SHALL NOT BE LIABLE FOR:
+                TO THE MAXIMUM EXTENT PERMITTED BY LAW, PHANRISE SHALL NOT BE LIABLE FOR:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
                 <li>Any indirect, incidental, special, consequential, or punitive damages</li>
@@ -213,14 +213,14 @@ export default function TermsAndConditions() {
                 <li>Damages resulting from social media platform API changes or discontinuation</li>
               </ul>
               <p className="text-slate-700 leading-relaxed mt-4">
-                In no event shall FanCoin's total liability exceed the amount you paid to FanCoin in the 12 months preceding the claim.
+                In no event shall Phanrise's total liability exceed the amount you paid to Phanrise in the 12 months preceding the claim.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">12. Indemnification</h2>
               <p className="text-slate-700 leading-relaxed">
-                You agree to indemnify, defend, and hold harmless FanCoin and its officers, directors, employees, and agents from and against any claims, liabilities, damages, losses, and expenses, including reasonable attorneys' fees, arising out of or in any way connected with your use of the Service, your violation of these Terms, or your violation of any rights of another.
+                You agree to indemnify, defend, and hold harmless Phanrise and its officers, directors, employees, and agents from and against any claims, liabilities, damages, losses, and expenses, including reasonable attorneys' fees, arising out of or in any way connected with your use of the Service, your violation of these Terms, or your violation of any rights of another.
               </p>
             </section>
 
@@ -251,7 +251,7 @@ export default function TermsAndConditions() {
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">15. Governing Law</h2>
               <p className="text-slate-700 leading-relaxed">
-                These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in which FanCoin operates, without regard to its conflict of law provisions. 
+                These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in which Phanrise operates, without regard to its conflict of law provisions. 
                 Any disputes arising from these Terms or the Service shall be resolved in the appropriate courts of that jurisdiction.
               </p>
             </section>
@@ -263,13 +263,13 @@ export default function TermsAndConditions() {
               </p>
               <div className="bg-purple-50 rounded-lg p-6 border border-purple-100">
                 <p className="text-slate-700 mb-2">
-                  <strong>Email:</strong> <a href="mailto:legal@fancoin.app" className="text-purple-600 hover:underline">legal@fancoin.app</a>
+                  <strong>Email:</strong> <a href="mailto:legal@phanrise.app" className="text-purple-600 hover:underline">legal@phanrise.app</a>
                 </p>
                 <p className="text-slate-700 mb-2">
-                  <strong>Support Email:</strong> <a href="mailto:support@fancoin.app" className="text-purple-600 hover:underline">support@fancoin.app</a>
+                  <strong>Support Email:</strong> <a href="mailto:support@phanrise.app" className="text-purple-600 hover:underline">support@phanrise.app</a>
                 </p>
                 <p className="text-slate-700">
-                  <strong>App Name:</strong> FanCoin
+                  <strong>App Name:</strong> Phanrise
                 </p>
               </div>
             </section>
@@ -284,7 +284,7 @@ export default function TermsAndConditions() {
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">18. Entire Agreement</h2>
               <p className="text-slate-700 leading-relaxed">
-                These Terms constitute the entire agreement between you and FanCoin regarding the use of the Service and supersede all prior agreements and understandings.
+                These Terms constitute the entire agreement between you and Phanrise regarding the use of the Service and supersede all prior agreements and understandings.
               </p>
             </section>
           </div>

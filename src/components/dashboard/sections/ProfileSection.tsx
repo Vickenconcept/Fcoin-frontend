@@ -397,7 +397,7 @@ export function ProfileSection() {
               <h4 className="text-slate-900 font-semibold">Reconnect your Facebook profile</h4>
               <p className="text-sm text-slate-600">
                 We detected that {pendingRecovery.providerUsername ?? 'this Facebook profile'} is linked to another
-                FanCoin account. If this is really you, transfer it now to keep earning rewards here.
+                Phanrise account. If this is really you, transfer it now to keep earning rewards here.
               </p>
             </div>
             <div className="flex gap-2">

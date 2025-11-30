@@ -12,7 +12,7 @@ function LoadingScreen() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex items-center justify-center">
       <div className="text-center space-y-2 text-slate-600">
-        <span className="block text-sm uppercase tracking-wide text-purple-500">FanCoin</span>
+        <span className="block text-sm uppercase tracking-wide text-purple-500">Phanrise</span>
         <p className="text-lg font-medium">Preparing your experience…</p>
       </div>
     </div>

@@ -159,7 +159,7 @@ export default function AuthFlow() {
                 </div>
               </div>
               <h2 className="text-slate-900 mb-2">
-                {isLogin ? 'Welcome Back' : 'Join FanCoin'}
+                {isLogin ? 'Welcome Back' : 'Join Phanrise'}
               </h2>
               <p className="text-slate-600">
                 {isLogin ? 'Log in to your account' : 'Create your account to get started'}

@@ -15,7 +15,7 @@ export default function PrivacyPolicy() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              FanCoin
+              Phanrise
             </span>
           </div>
           <Button variant="ghost" onClick={() => navigate(-1)}>
@@ -40,11 +40,11 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">1. Introduction</h2>
               <p className="text-slate-700 leading-relaxed">
-                This privacy policy applies to the <strong>FanCoin</strong> mobile and web application built by FanCoin. 
+                This privacy policy applies to the <strong>Phanrise</strong> mobile and web application built by Phanrise. 
                 We are committed to protecting your privacy and ensuring transparency about how we collect, use, and safeguard your information.
               </p>
               <p className="text-slate-700 leading-relaxed">
-                By using FanCoin, you agree to the collection and use of information in accordance with this policy. 
+                By using Phanrise, you agree to the collection and use of information in accordance with this policy. 
                 If you do not agree with our policies and practices, please do not use our services.
               </p>
             </section>
@@ -54,7 +54,7 @@ export default function PrivacyPolicy() {
               
               <h3 className="text-xl font-semibold text-slate-900 mb-3">2.1 Social Media Platform Data</h3>
               <p className="text-slate-700 leading-relaxed mb-4">
-                When you connect your social media accounts (Facebook, Instagram, TikTok, or YouTube) to FanCoin, we collect information through their respective APIs:
+                When you connect your social media accounts (Facebook, Instagram, TikTok, or YouTube) to Phanrise, we collect information through their respective APIs:
               </p>
               
               <h4 className="text-lg font-semibold text-slate-800 mb-2 mt-4">Facebook and Instagram (Meta Platforms)</h4>
@@ -94,7 +94,7 @@ export default function PrivacyPolicy() {
 
               <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">2.2 Account Information</h3>
               <p className="text-slate-700 leading-relaxed mb-4">
-                We collect information you provide when creating your FanCoin account:
+                We collect information you provide when creating your Phanrise account:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
                 <li>Email address</li>
@@ -105,7 +105,7 @@ export default function PrivacyPolicy() {
 
               <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">2.3 Usage Data</h3>
               <p className="text-slate-700 leading-relaxed">
-                We automatically collect information about how you interact with FanCoin, including:
+                We automatically collect information about how you interact with Phanrise, including:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
                 <li>Device information (device type, operating system, browser type)</li>
@@ -121,7 +121,7 @@ export default function PrivacyPolicy() {
                 We use the collected information for the following purposes:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
-                <li><strong>Service Delivery:</strong> To provide and maintain FanCoin services, including tracking engagement and distributing rewards</li>
+                <li><strong>Service Delivery:</strong> To provide and maintain Phanrise services, including tracking engagement and distributing rewards</li>
                 <li><strong>Engagement Tracking:</strong> To monitor and attribute likes, comments, shares, and views to registered users in our app</li>
                 <li><strong>Reward Distribution:</strong> To calculate and distribute coins to users based on their engagement with creator content</li>
                 <li><strong>Account Management:</strong> To manage your account, process transactions, and provide customer support</li>
@@ -183,7 +183,7 @@ export default function PrivacyPolicy() {
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
                 <li><strong>Through the App:</strong> Go to your account settings and select "Delete Account" to permanently delete your account and associated data</li>
-                <li><strong>By Email:</strong> Send a deletion request to <a href="mailto:privacy@fancoin.app" className="text-purple-600 hover:underline">privacy@fancoin.app</a> with the subject line "Data Deletion Request"</li>
+                <li><strong>By Email:</strong> Send a deletion request to <a href="mailto:privacy@phanrise.app" className="text-purple-600 hover:underline">privacy@phanrise.app</a> with the subject line "Data Deletion Request"</li>
                 <li><strong>Disconnect Social Accounts:</strong> You can disconnect your Facebook, Instagram, TikTok, or YouTube accounts at any time, which will stop new data collection from those platforms</li>
               </ul>
               <p className="text-slate-700 leading-relaxed mt-4">
@@ -194,7 +194,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">8. Third-Party Services</h2>
               <p className="text-slate-700 leading-relaxed mb-4">
-                FanCoin integrates with the following third-party services:
+                Phanrise integrates with the following third-party services:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
                 <li><strong>Meta (Facebook/Instagram):</strong> For social media integration and engagement tracking. Their privacy policy applies to data collected through their platforms.</li>
@@ -214,13 +214,13 @@ export default function PrivacyPolicy() {
               </p>
               <div className="bg-purple-50 rounded-lg p-6 border border-purple-100">
                 <p className="text-slate-700 mb-2">
-                  <strong>Email:</strong> <a href="mailto:privacy@fancoin.app" className="text-purple-600 hover:underline">privacy@fancoin.app</a>
+                  <strong>Email:</strong> <a href="mailto:privacy@phanrise.app" className="text-purple-600 hover:underline">privacy@phanrise.app</a>
                 </p>
                 <p className="text-slate-700 mb-2">
-                  <strong>Support Email:</strong> <a href="mailto:support@fancoin.app" className="text-purple-600 hover:underline">support@fancoin.app</a>
+                  <strong>Support Email:</strong> <a href="mailto:support@phanrise.app" className="text-purple-600 hover:underline">support@phanrise.app</a>
                 </p>
                 <p className="text-slate-700">
-                  <strong>App Name:</strong> FanCoin
+                  <strong>App Name:</strong> Phanrise
                 </p>
               </div>
             </section>
@@ -236,7 +236,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">11. Children's Privacy</h2>
               <p className="text-slate-700 leading-relaxed">
-                FanCoin is not intended for users under the age of 13. We do not knowingly collect personal information from children under 13. 
+                Phanrise is not intended for users under the age of 13. We do not knowingly collect personal information from children under 13. 
                 If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately.
               </p>
             </section>
@@ -244,7 +244,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">12. International Users</h2>
               <p className="text-slate-700 leading-relaxed">
-                If you are accessing FanCoin from outside the United States, please note that your information may be transferred to, stored, and processed in the United States. 
+                If you are accessing Phanrise from outside the United States, please note that your information may be transferred to, stored, and processed in the United States. 
                 By using our services, you consent to the transfer of your information to our facilities and those third parties with whom we share it as described in this policy.
               </p>
             </section>

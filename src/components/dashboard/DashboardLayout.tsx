@@ -223,7 +223,7 @@ export default function DashboardLayout() {
       return user.username.slice(0, 2).toUpperCase();
     }
 
-    return 'FC';
+    return 'PH';
   }, [user]);
 
   return (
@@ -235,7 +235,7 @@ export default function DashboardLayout() {
             <Home className="w-6 h-6 text-white" />
           </div>
           <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            FanCoin
+            Phanrise
           </span>
         </div>
 
@@ -360,7 +360,7 @@ export default function DashboardLayout() {
                   <Home className="w-6 h-6 text-white" />
                 </div>
                 <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  FanCoin
+                  Phanrise
                 </span>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>

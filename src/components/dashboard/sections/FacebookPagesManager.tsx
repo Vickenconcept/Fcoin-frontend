@@ -46,7 +46,7 @@ export function FacebookPagesManager({ open, onOpenChange }: FacebookPagesManage
         await connectPage(pageId);
       } catch (error) {
         if (error instanceof Error && error.message.includes('already connected')) {
-          toast.error('This Facebook profile is already connected to another FanCoin account.');
+          toast.error('This Facebook profile is already connected to another Phanrise account.');
         }
         throw error;
       }

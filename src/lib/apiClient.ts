@@ -14,8 +14,8 @@ const generateIdempotencyKey = (): string => {
   return `idemp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
-const TOKEN_COOKIE = 'fancoin_auth_token';
-const TOKEN_STORAGE_KEY = 'fancoin_auth_token_storage';
+const TOKEN_COOKIE = 'phanrise_auth_token';
+const TOKEN_STORAGE_KEY = 'phanrise_auth_token_storage';
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 function getCookie(name: string): string | null {
