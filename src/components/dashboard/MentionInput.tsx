@@ -4,6 +4,22 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useMentions, type MentionUser } from './hooks/useMentions';
 
+// Reserved mention types
+const RESERVED_MENTIONS: MentionUser[] = [
+  {
+    id: 'everyone',
+    username: 'everyone',
+    display_name: 'Everyone',
+    avatar_url: null,
+  },
+  {
+    id: 'highlight',
+    username: 'highlight',
+    display_name: 'Highlight',
+    avatar_url: null,
+  },
+];
+
 interface MentionInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -43,13 +59,23 @@ export function MentionInput({
       // Check if there's a space after @ (meaning mention is complete)
       if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
         setMentionStart(lastAtIndex);
-        const query = textAfterAt.trim();
-        if (query.length > 0) {
-          searchUsers(query);
-          setShowSuggestions(true);
-          setSelectedIndex(0);
+        const query = textAfterAt.trim().toLowerCase();
+        
+        // Always show suggestions when @ is typed, prioritizing reserved mentions
+        setShowSuggestions(true);
+        setSelectedIndex(0);
+        
+        // If query is empty or matches reserved mentions, show reserved mentions first
+        if (query.length === 0 || RESERVED_MENTIONS.some(m => m.username.startsWith(query))) {
+          // Only search users if query doesn't match reserved mentions exactly
+          if (query.length > 0 && !RESERVED_MENTIONS.some(m => m.username === query)) {
+            searchUsers(query);
+          } else {
+            clearResults();
+          }
         } else {
-          setShowSuggestions(false);
+          // Query doesn't match reserved mentions, search for users
+          searchUsers(query);
         }
       } else {
         setShowSuggestions(false);
@@ -101,17 +127,49 @@ export function MentionInput({
     }, 10);
   };
 
+  // Get combined suggestions (reserved mentions first, then search results)
+  const getSuggestions = (): MentionUser[] => {
+    if (mentionStart === null) return [];
+    
+    // Get the current query from the value
+    const textAfterAt = value.substring(mentionStart + 1);
+    const spaceIndex = textAfterAt.indexOf(' ');
+    const newlineIndex = textAfterAt.indexOf('\n');
+    const endIndex = spaceIndex !== -1 && newlineIndex !== -1
+      ? Math.min(spaceIndex, newlineIndex)
+      : spaceIndex !== -1
+        ? spaceIndex
+        : newlineIndex !== -1
+          ? newlineIndex
+          : textAfterAt.length;
+    const query = textAfterAt.substring(0, endIndex).trim().toLowerCase();
+    
+    // Filter reserved mentions based on query - always show if query is empty or matches
+    const filteredReserved = RESERVED_MENTIONS.filter(m => 
+      query.length === 0 || m.username.startsWith(query)
+    );
+    
+    // Filter search results to exclude reserved usernames
+    const filteredSearchResults = searchResults.filter(u => 
+      u.username !== 'everyone' && u.username !== 'highlight'
+    );
+    
+    // Always return reserved mentions first, then search results
+    return [...filteredReserved, ...filteredSearchResults];
+  };
+
   const handleKeyDown = (e: { key: string; shiftKey: boolean; preventDefault: () => void }) => {
-    if (showSuggestions && searchResults.length > 0) {
+    const suggestions = getSuggestions();
+    if (showSuggestions && suggestions.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev < searchResults.length - 1 ? prev + 1 : prev));
+        setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : prev));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0));
       } else if (e.key === 'Enter' && (!multiline || e.shiftKey === false)) {
         e.preventDefault();
-        insertMention(searchResults[selectedIndex]);
+        insertMention(suggestions[selectedIndex]);
         return;
       } else if (e.key === 'Escape') {
         setShowSuggestions(false);
@@ -173,44 +231,58 @@ export function MentionInput({
           maxLength={maxLength}
         />
       )}
-      {showSuggestions && searchResults.length > 0 && (
+      {showSuggestions && (
         <div
           ref={suggestionsRef}
           className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
           style={{ top: '100%' }}
         >
-          {isSearching && (
+          {isSearching && getSuggestions().length === 0 && (
             <div className="p-2 text-sm text-gray-500">Searching...</div>
           )}
-          {!isSearching && searchResults.map((user, index) => (
-            <div
-              key={user.id}
-              onClick={(e: { preventDefault: () => void; stopPropagation: () => void }) => {
-                e.preventDefault();
-                e.stopPropagation();
-                insertMention(user);
-              }}
-              onMouseDown={(e: { preventDefault: () => void }) => {
-                e.preventDefault(); // Prevent input from losing focus
-              }}
-              className={`p-2 flex items-center gap-2 cursor-pointer hover:bg-gray-100 transition-colors ${
-                index === selectedIndex ? 'bg-gray-100' : ''
-              }`}
-            >
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={user.avatar_url || undefined} alt={user.display_name || user.username} />
-                <AvatarFallback>
-                  {(user.display_name || user.username).charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="font-semibold text-sm text-black">
-                  {user.display_name || user.username}
+          {(!isSearching || getSuggestions().length > 0) && getSuggestions().length > 0 && getSuggestions().map((user, index) => {
+            const isReserved = user.id === 'everyone' || user.id === 'highlight';
+            return (
+              <div
+                key={user.id}
+                onClick={(e: { preventDefault: () => void; stopPropagation: () => void }) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  insertMention(user);
+                }}
+                onMouseDown={(e: { preventDefault: () => void }) => {
+                  e.preventDefault(); // Prevent input from losing focus
+                }}
+                className={`p-2 flex items-center gap-2 cursor-pointer hover:bg-gray-100 transition-colors ${
+                  index === selectedIndex ? 'bg-gray-100' : ''
+                } ${isReserved ? 'bg-orange-50' : ''}`}
+              >
+                <Avatar className="w-8 h-8">
+                  {user.avatar_url ? (
+                    <AvatarImage src={user.avatar_url} alt={user.display_name || user.username} />
+                  ) : (
+                    <AvatarFallback className="bg-orange-500 text-white">
+                      {(user.display_name || user.username).charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="flex-1">
+                  <div className="font-semibold text-sm text-black">
+                    {user.display_name || user.username}
+                  </div>
+                  <div className="text-xs text-gray-500">@{user.username}</div>
                 </div>
-                <div className="text-xs text-gray-500">@{user.username}</div>
+                {isReserved && (
+                  <span className="px-2 py-1 text-xs font-semibold text-white bg-orange-500 rounded">
+                    Special
+                  </span>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
+          {!isSearching && getSuggestions().length === 0 && (
+            <div className="p-2 text-sm text-gray-500">No users found</div>
+          )}
         </div>
       )}
     </div>

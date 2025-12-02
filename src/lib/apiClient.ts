@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? 'http://localhost:8000/api';
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? 'https://phanrise.on-forge.com/api';
 
 // Debug: Log the API URL being used
 console.log('🔗 Frontend API Base URL:', API_BASE_URL);

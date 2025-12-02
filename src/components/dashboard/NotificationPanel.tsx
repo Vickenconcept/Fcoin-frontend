@@ -71,7 +71,60 @@ export function NotificationPanel({ isOpen, onClose, onPostClick }: Notification
     if (type.includes('transfer')) {
       return '💸';
     }
+    if (type.includes('like')) {
+      return '❤️';
+    }
+    if (type.includes('comment') || type.includes('reply')) {
+      return '💬';
+    }
     return '🔔';
+  };
+
+  const getNotificationText = (notification: Notification) => {
+    const data = notification.data;
+    const type = notification.type;
+
+    if (type.includes('mention')) {
+      const mentioner = data.mentioner_display_name || data.mentioner_username || 'Someone';
+      if (data.comment_id) {
+        return `${mentioner} mentioned you in a comment`;
+      }
+      return `${mentioner} mentioned you in a post`;
+    }
+
+    if (type === 'post.like') {
+      const liker = data.liker_display_name || data.liker_username || 'Someone';
+      return `${liker} liked your post`;
+    }
+
+    if (type === 'post.comment') {
+      const commenter = data.commenter_display_name || data.commenter_username || 'Someone';
+      return `${commenter} commented on your post`;
+    }
+
+    if (type === 'comment.like') {
+      const liker = data.liker_display_name || data.liker_username || 'Someone';
+      return `${liker} liked your comment`;
+    }
+
+    if (type === 'comment.reply') {
+      const replier = data.replier_display_name || data.replier_username || 'Someone';
+      return `${replier} replied to your comment`;
+    }
+
+    if (type.includes('reward')) {
+      return data.body || data.title || 'You received a reward';
+    }
+
+    if (type.includes('top_up')) {
+      return data.body || data.title || 'Top-up completed';
+    }
+
+    if (type.includes('transfer')) {
+      return data.body || data.title || 'Wallet transfer';
+    }
+
+    return data.body || data.title || 'New notification';
   };
 
   if (!isOpen) return null;
@@ -158,7 +211,20 @@ export function NotificationPanel({ isOpen, onClose, onPostClick }: Notification
               {filteredNotifications.map((notification) => {
                 const isUnread = !notification.read_at;
                 const data = notification.data;
-                const mentionerName = data.mentioner_display_name || data.mentioner_username || 'Someone';
+                // Get avatar from various notification types
+                const avatarUrl = (
+                  data.mentioner_avatar_url || 
+                  data.liker_avatar_url || 
+                  data.commenter_avatar_url || 
+                  data.replier_avatar_url
+                ) as string | undefined;
+                const userName = (
+                  data.mentioner_display_name || data.mentioner_username ||
+                  data.liker_display_name || data.liker_username ||
+                  data.commenter_display_name || data.commenter_username ||
+                  data.replier_display_name || data.replier_username ||
+                  'Someone'
+                ) as string;
 
                 return (
                   <div
@@ -170,14 +236,14 @@ export function NotificationPanel({ isOpen, onClose, onPostClick }: Notification
                   >
                     <div className="flex gap-3">
                       {/* Avatar */}
-                      {data.mentioner_avatar_url || data.mentioner_id ? (
+                      {avatarUrl ? (
                         <Avatar className="w-10 h-10 flex-shrink-0">
                           <AvatarImage
-                            src={data.mentioner_avatar_url as string | undefined}
-                            alt={mentionerName as string}
+                            src={avatarUrl}
+                            alt={userName}
                           />
                           <AvatarFallback className="text-xs">
-                            {(mentionerName as string).charAt(0).toUpperCase()}
+                            {userName.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                       ) : (
@@ -197,17 +263,18 @@ export function NotificationPanel({ isOpen, onClose, onPostClick }: Notification
                           )}
                         </div>
                         <p className="text-sm text-gray-700 mb-2 line-clamp-2">
-                          {data.body ? (
-                            <MentionText text={data.body as string} />
-                          ) : (
-                            'You have a new notification'
-                          )}
+                          {getNotificationText(notification)}
                         </p>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <span>{formatTime(notification.created_at)}</span>
-                          {notification.type.includes('mention') && (
+                          {(notification.type.includes('mention') || 
+                            notification.type.includes('like') || 
+                            notification.type.includes('comment') || 
+                            notification.type.includes('reply')) && (
                             <Badge variant="outline" className="text-xs">
-                              Mention
+                              {notification.type.includes('mention') ? 'Mention' :
+                               notification.type.includes('like') ? 'Like' :
+                               notification.type.includes('reply') ? 'Reply' : 'Comment'}
                             </Badge>
                           )}
                           {data.post_id && (

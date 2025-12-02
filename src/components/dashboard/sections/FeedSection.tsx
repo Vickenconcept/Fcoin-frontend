@@ -574,12 +574,20 @@ export function FeedSection() {
             const commentElement = document.getElementById(`comment-${commentId}`);
             if (commentElement) {
               commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              commentElement.classList.add('ring-2', 'ring-orange-500', 'rounded-lg', 'p-2');
+              // Add blue highlight with shadow
+              commentElement.classList.add('ring-2', 'ring-blue-500', 'shadow-lg', 'shadow-blue-500/50', 'rounded-lg', 'p-2', 'bg-blue-50/30', 'transition-all');
+              // Remove highlight after animation
               setTimeout(() => {
-                commentElement.classList.remove('ring-2', 'ring-orange-500');
+                commentElement.classList.remove('ring-2', 'ring-blue-500', 'shadow-lg', 'shadow-blue-500/50', 'bg-blue-50/30');
+                // Fade out transition
+                setTimeout(() => {
+                  commentElement.classList.remove('transition-all');
+                }, 500);
               }, 2000);
+            } else {
+              console.warn('Comment element not found:', `comment-${commentId}`);
             }
-          }, 300);
+          }, 500);
         }
       }
     }
