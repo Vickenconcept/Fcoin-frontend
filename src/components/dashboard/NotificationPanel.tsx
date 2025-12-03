@@ -15,12 +15,33 @@ type NotificationPanelProps = {
 };
 
 export function NotificationPanel({ isOpen, onClose, onPostClick }: NotificationPanelProps) {
-  const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
+  const { 
+    notifications, 
+    unreadCount, 
+    isLoading, 
+    isLoadingMore,
+    hasMore,
+    loadNotifications,
+    loadMore,
+    markAsRead, 
+    markAllAsRead 
+  } = useNotifications();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
   const filteredNotifications = filter === 'unread'
     ? notifications.filter((n) => !n.read_at)
     : notifications;
+
+  const handleFilterChange = (newFilter: 'all' | 'unread') => {
+    setFilter(newFilter);
+    loadNotifications(newFilter === 'unread', true);
+  };
+
+  const handleLoadMore = () => {
+    if (hasMore && !isLoadingMore) {
+      loadMore(filter === 'unread');
+    }
+  };
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -170,7 +191,7 @@ export function NotificationPanel({ isOpen, onClose, onPostClick }: Notification
           <Button
             variant={filter === 'all' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setFilter('all')}
+            onClick={() => handleFilterChange('all')}
             className={filter === 'all' ? 'bg-orange-500 hover:bg-orange-600 text-white' : ''}
           >
             All
@@ -178,7 +199,7 @@ export function NotificationPanel({ isOpen, onClose, onPostClick }: Notification
           <Button
             variant={filter === 'unread' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setFilter('unread')}
+            onClick={() => handleFilterChange('unread')}
             className={filter === 'unread' ? 'bg-orange-500 hover:bg-orange-600 text-white' : ''}
           >
             Unread {unreadCount > 0 && `(${unreadCount})`}
@@ -286,6 +307,28 @@ export function NotificationPanel({ isOpen, onClose, onPostClick }: Notification
                   </div>
                 );
               })}
+            </div>
+          )}
+          
+          {/* Show More Button */}
+          {hasMore && filteredNotifications.length > 0 && (
+            <div className="p-4 border-t flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLoadMore}
+                disabled={isLoadingMore}
+                className="min-w-[120px]"
+              >
+                {isLoadingMore ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                    Loading...
+                  </span>
+                ) : (
+                  'Show more'
+                )}
+              </Button>
             </div>
           )}
         </div>
