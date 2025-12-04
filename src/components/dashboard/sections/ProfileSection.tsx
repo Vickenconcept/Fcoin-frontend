@@ -1101,6 +1101,21 @@ export function ProfileSection() {
                       >
                         {isConnecting ? 'Connecting…' : provider.connectLabel}
                       </Button>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
+                        <p className="text-blue-900 font-medium mb-1">Privacy Notice</p>
+                        <p className="text-blue-700">
+                          By connecting YouTube, you grant us read-only access to sync your videos and track engagement. 
+                          We use this data solely to display your content and calculate rewards. 
+                          <a 
+                            href={`${typeof window !== 'undefined' ? window.location.origin : 'https://www.phanrise.com'}/privacy-policy`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline ml-1"
+                          >
+                            Learn more
+                          </a>
+                        </p>
+                      </div>
                       {provider.description && (
                         <p className="text-xs text-slate-500">{provider.description}</p>
                       )}
@@ -1174,42 +1189,59 @@ export function ProfileSection() {
                   </div>
                 )}
                 {isYouTube && isConnected && youtubeAccounts.length > 0 && (
-                  <div className="mt-3 space-y-2 text-sm text-slate-600">
-                    {youtubeAccounts.slice(0, 2).map((entry) => (
-                      <div key={entry.id} className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          {entry.provider_picture_url && (
-                            <img
-                              src={entry.provider_picture_url}
-                              alt={entry.provider_username || 'YouTube'}
-                              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                              onError={(e: { currentTarget: HTMLImageElement }) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          )}
-                          <span className="truncate">
-                            {entry.provider_username || entry.provider_user_id}
+                  <>
+                    <div className="mt-3 space-y-2 text-sm text-slate-600">
+                      {youtubeAccounts.slice(0, 2).map((entry) => (
+                        <div key={entry.id} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {entry.provider_picture_url && (
+                              <img
+                                src={entry.provider_picture_url}
+                                alt={entry.provider_username || 'YouTube'}
+                                className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                                onError={(e: { currentTarget: HTMLImageElement }) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            )}
+                            <span className="truncate">
+                              {entry.provider_username || entry.provider_user_id}
+                            </span>
+                          </div>
+                          <span className="text-xs text-slate-400 flex-shrink-0">
+                            Connected {entry.connected_at ? new Date(entry.connected_at).toLocaleString() : '—'}
                           </span>
                         </div>
-                        <span className="text-xs text-slate-400 flex-shrink-0">
-                          Connected {entry.connected_at ? new Date(entry.connected_at).toLocaleString() : '—'}
-                        </span>
-                      </div>
-                    ))}
-                    {youtubeAccounts.length > 2 && (
-                      <button
-                        type="button"
-                        className="text-xs text-red-600 hover:underline"
-                        onClick={() => {
-                          // Could add a YouTube manager modal if needed
-                          toast('Multiple YouTube accounts connected', { icon: 'ℹ️' });
-                        }}
-                      >
-                        View all {youtubeAccounts.length} channels
-                      </button>
-                    )}
-                  </div>
+                      ))}
+                      {youtubeAccounts.length > 2 && (
+                        <button
+                          type="button"
+                          className="text-xs text-red-600 hover:underline"
+                          onClick={() => {
+                            // Could add a YouTube manager modal if needed
+                            toast('Multiple YouTube accounts connected', { icon: 'ℹ️' });
+                          }}
+                        >
+                          View all {youtubeAccounts.length} channels
+                        </button>
+                      )}
+                    </div>
+                    <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
+                      <p className="text-blue-900 font-medium mb-1">Privacy Notice</p>
+                      <p className="text-blue-700">
+                        We use read-only access to sync your YouTube videos and track engagement. 
+                        Your data is used solely to display content and calculate rewards. 
+                        <a 
+                          href={`${typeof window !== 'undefined' ? window.location.origin : 'https://www.phanrise.com'}/privacy-policy`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline ml-1"
+                        >
+                          Learn more
+                        </a>
+                      </p>
+                    </div>
+                  </>
                 )}
                 {isTikTok && isConnected && (
                   <div className="mt-3 space-y-2 text-sm text-slate-600">

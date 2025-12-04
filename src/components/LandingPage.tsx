@@ -379,8 +379,22 @@ export default function LandingPage() {
               <p className="text-slate-900 mb-4">Legal</p>
               <ul className="space-y-2 text-slate-600">
                 <li><Link to="/terms-and-conditions" className="hover:text-purple-600">Terms of Service</Link></li>
-                <li><Link to="/privacy-policy" className="hover:text-purple-600">Privacy Policy</Link></li>
-                <li><Link to="/privacy-policy" className="hover:text-purple-600">Cookie Policy</Link></li>
+                <li>
+                  <a 
+                    href={`${typeof window !== 'undefined' ? window.location.origin : 'https://www.phanrise.com'}/privacy-policy`}
+                    className="hover:text-purple-600"
+                  >
+                    Privacy Policy
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href={`${typeof window !== 'undefined' ? window.location.origin : 'https://www.phanrise.com'}/privacy-policy`}
+                    className="hover:text-purple-600"
+                  >
+                    Cookie Policy
+                  </a>
+                </li>
               </ul>
             </div>
           </div>
