@@ -6,6 +6,7 @@ import AdminCoinValuesPage from './components/admin/AdminCoinValuesPage';
 import UserProfilePage from './components/profile/UserProfilePage';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsAndConditions from './components/TermsAndConditions';
+import DataDeletionInstructions from './components/DataDeletionInstructions';
 import { useAuth } from '@/context/AuthContext';
 
 function LoadingScreen() {
@@ -94,6 +95,7 @@ export default function App() {
         />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+        <Route path="/data-deletion" element={<DataDeletionInstructions />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>

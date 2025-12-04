@@ -388,6 +388,11 @@ export default function LandingPage() {
                   </a>
                 </li>
                 <li>
+                  <Link to="/data-deletion" className="hover:text-purple-600">
+                    Data Deletion Instructions
+                  </Link>
+                </li>
+                <li>
                   <a 
                     href={`${typeof window !== 'undefined' ? window.location.origin : 'https://www.phanrise.com'}/privacy-policy`}
                     className="hover:text-purple-600"
