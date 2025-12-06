@@ -884,7 +884,13 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                           </span>
                           <Badge 
                             variant={isRewarded ? 'default' : isNotEligible ? 'destructive' : 'secondary'}
-                            className="text-xs"
+                            className={`text-xs ${
+                              isRewarded 
+                                ? 'bg-green-100 text-green-700 border-green-200' 
+                                : isNotEligible 
+                                ? 'bg-red-100 text-red-700 border-red-200' 
+                                : 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                            }`}
                             title={statusReason}
                           >
                             {isRewarded ? 'Rewarded' : isNotEligible ? 'Not Eligible' : 'Pending'}
@@ -962,7 +968,13 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
                               </span>
                               <Badge 
                                 variant={isRewarded ? 'default' : isNotEligible ? 'destructive' : 'secondary'}
-                                className="text-xs"
+                                className={`text-xs ${
+                                  isRewarded 
+                                    ? 'bg-green-100 text-green-700 border-green-200' 
+                                    : isNotEligible 
+                                    ? 'bg-red-100 text-red-700 border-red-200' 
+                                    : 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                                }`}
                                 title={statusReason}
                               >
                                 {isRewarded ? 'Rewarded' : isNotEligible ? 'Not Eligible' : 'Pending'}
