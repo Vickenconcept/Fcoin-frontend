@@ -7,11 +7,14 @@ export type RecentEngagement = {
   fanName: string;
   fanUsername: string | null;
   platform: string;
+  pageName?: string | null;
   postTitle: string | null;
   type: string;
   loggedAt: string | null;
   rewardGiven: boolean;
   rewardAmount: number | null;
+  status?: string;
+  status_reason?: string;
 };
 
 type UseRecentEngagementsReturn = {
@@ -52,6 +55,7 @@ export function useRecentEngagements(limit = 6): UseRecentEngagementsReturn {
         const platform = (item?.post?.platform ?? item?.provider ?? 'unknown')
           .toString()
           .toLowerCase();
+        const pageName = item?.post?.page_name ?? null;
 
         const fallbackId = `${item?.post?.id ?? 'post'}-${item?.fan?.id ?? Math.random()
           .toString(36)
@@ -62,6 +66,7 @@ export function useRecentEngagements(limit = 6): UseRecentEngagementsReturn {
           fanName,
           fanUsername: item?.fan?.username ?? null,
           platform,
+          pageName,
           postTitle: item?.post?.title ?? null,
           type: (item?.type ?? '').toString().toUpperCase(),
           loggedAt: item?.logged_at ?? null,
@@ -72,6 +77,8 @@ export function useRecentEngagements(limit = 6): UseRecentEngagementsReturn {
               : item?.reward_amount
               ? Number(item.reward_amount)
               : null,
+          status: item?.status || (item?.reward_given ? 'rewarded' : 'pending'),
+          status_reason: item?.status_reason || null,
         };
       });
 

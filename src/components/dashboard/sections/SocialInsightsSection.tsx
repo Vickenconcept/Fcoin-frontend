@@ -19,7 +19,9 @@ import { useFacebookPagePosts, SocialPost } from '../hooks/useFacebookPagePosts'
 import { useInstagramPosts } from '../hooks/useInstagramPosts';
 import { useTikTokPosts } from '../hooks/useTikTokPosts';
 import { useYouTubePosts } from '../hooks/useYouTubePosts';
+import { useRecentEngagements } from '../hooks/useRecentEngagements';
 import type { CreatorCoin } from '../hooks/useCoins';
+import { apiClient } from '@/lib/apiClient';
 
 type NormalizedEngagedUser = {
   user_id: string;
@@ -131,13 +133,37 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
   const [filterType, setFilterType] = useState<string>('all');
   const [filterSearch, setFilterSearch] = useState('');
   const [filterDate, setFilterDate] = useState<string>('all');
-  const [activeSocialTab, setActiveSocialTab] = useState<'facebook' | 'instagram' | 'tiktok' | 'youtube'>(
-    'facebook',
+  const [activeSocialTab, setActiveSocialTab] = useState<'facebook' | 'instagram' | 'tiktok' | 'youtube' | 'all-engagements'>(
+    'all-engagements',
   );
+  const [activeEngagementTab, setActiveEngagementTab] = useState<'on-my-posts' | 'my-engagements'>('on-my-posts');
+  const { engagements: allEngagements, isLoading: isAllEngagementsLoading, reload: reloadAllEngagements } = useRecentEngagements(100);
+  const [myEngagements, setMyEngagements] = useState<any[]>([]);
+  const [isMyEngagementsLoading, setIsMyEngagementsLoading] = useState(false);
 
   useEffect(() => {
     loadPages().catch((error: unknown) => console.error('[SocialInsightsSection] loadPages', error));
   }, [loadPages]);
+
+  const loadMyEngagements = useCallback(async () => {
+    setIsMyEngagementsLoading(true);
+    try {
+      const response = await apiClient.request<{ data: any[] }>('/v1/engagements/my?limit=100');
+      if (response.ok && Array.isArray(response.data)) {
+        setMyEngagements(response.data);
+      }
+    } catch (error) {
+      console.error('[SocialInsightsSection] loadMyEngagements error', error);
+    } finally {
+      setIsMyEngagementsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeSocialTab === 'all-engagements' && activeEngagementTab === 'my-engagements') {
+      loadMyEngagements();
+    }
+  }, [activeSocialTab, activeEngagementTab, loadMyEngagements]);
 
   useEffect(() => {
     if (pages.length === 0) {
@@ -367,7 +393,7 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
 
     return (
       <Dialog open={engagementModalOpen} onOpenChange={setEngagementModalOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl bg-white">
           <DialogHeader>
             <DialogTitle>Engagement Details</DialogTitle>
             <DialogDescription>
@@ -722,11 +748,17 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
       <Tabs
         value={activeSocialTab}
         onValueChange={(value: string) =>
-          setActiveSocialTab(value as 'facebook' | 'instagram' | 'tiktok')
+          setActiveSocialTab(value as 'facebook' | 'instagram' | 'tiktok' | 'youtube' | 'all-engagements')
         }
         className="space-y-6"
       >
         <TabsList className="inline-flex w-full flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-1 md:w-auto">
+          <TabsTrigger
+            value="all-engagements"
+            className="flex-1 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+          >
+            All Engagements
+          </TabsTrigger>
           <TabsTrigger
             value="facebook"
             className="flex-1 rounded-lg px-4 py-2 text-sm font-medium data-[state=active]:bg-purple-600 data-[state=active]:text-white"
@@ -752,6 +784,210 @@ export function SocialInsightsSection({ coins, isCoinsLoading }: SocialInsightsS
             YouTube
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="all-engagements" className="space-y-6 focus-visible:outline-none">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-slate-900 text-lg font-semibold">All Engagements</h3>
+              <p className="text-sm text-slate-500">
+                {activeEngagementTab === 'on-my-posts' 
+                  ? 'View all likes, comments, and shares on your posts.'
+                  : 'View your engagement history and rewards.'}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              disabled={activeEngagementTab === 'on-my-posts' ? isAllEngagementsLoading : isMyEngagementsLoading}
+              onClick={() => activeEngagementTab === 'on-my-posts' ? reloadAllEngagements() : loadMyEngagements()}
+            >
+              <RefreshCcw className={`w-4 h-4 mr-2 ${(activeEngagementTab === 'on-my-posts' ? isAllEngagementsLoading : isMyEngagementsLoading) ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+
+          {/* Engagement Type Tabs */}
+          <div className="flex gap-2 border-b border-slate-200 mb-4">
+            <button
+              type="button"
+              onClick={() => setActiveEngagementTab('on-my-posts')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeEngagementTab === 'on-my-posts'
+                  ? 'border-purple-600 text-purple-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              On My Posts
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveEngagementTab('my-engagements')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeEngagementTab === 'my-engagements'
+                  ? 'border-purple-600 text-purple-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              My Engagements
+            </button>
+          </div>
+
+          {activeEngagementTab === 'on-my-posts' ? (
+            <>
+              {isAllEngagementsLoading && allEngagements.length === 0 ? (
+                <Card className="p-6">
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-20 w-full" />
+                    ))}
+                  </div>
+                </Card>
+              ) : allEngagements.length === 0 ? (
+                <Card className="p-12 text-center">
+                  <p className="text-slate-500">
+                    No engagements recorded yet. Share more content and encourage your fans to interact!
+                  </p>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {allEngagements.map((engagement: any) => {
+                const engagementAction = engagement.type === 'LIKE' ? 'liked' 
+                  : engagement.type === 'COMMENT' ? 'commented on'
+                  : engagement.type === 'SHARE' ? 'shared'
+                  : engagement.type === 'WATCH' ? 'watched'
+                  : 'engaged with';
+                
+                const status = engagement.status || (engagement.rewardGiven ? 'rewarded' : 'pending');
+                const statusReason = engagement.status_reason || '';
+                const isRewarded = status === 'rewarded';
+                const isNotEligible = status === 'not_eligible';
+                
+                return (
+                  <Card key={engagement.id} className="p-4 bg-white border border-slate-200">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-purple-600 font-semibold text-sm">⚡</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-slate-900 font-medium">{engagement.fanName}</p>
+                        <p className="text-slate-600 text-sm mt-1">
+                          {engagementAction} your {engagement.pageName ? `${engagement.pageName} (${engagement.platform})` : engagement.platform} post
+                          {engagement.postTitle && ` "${engagement.postTitle}"`}
+                        </p>
+                        <div className="flex items-center gap-3 mt-2 flex-wrap">
+                          <Badge variant="outline" className="text-xs">
+                            {engagement.pageName ? `${engagement.pageName} • ${engagement.platform}` : engagement.platform}
+                          </Badge>
+                          <span className="text-xs text-slate-400">
+                            {engagement.loggedAt 
+                              ? new Date(engagement.loggedAt).toLocaleString()
+                              : 'Just now'}
+                          </span>
+                          <Badge 
+                            variant={isRewarded ? 'default' : isNotEligible ? 'destructive' : 'secondary'}
+                            className="text-xs"
+                            title={statusReason}
+                          >
+                            {isRewarded ? 'Rewarded' : isNotEligible ? 'Not Eligible' : 'Pending'}
+                          </Badge>
+                          {statusReason && !isRewarded && (
+                            <span className="text-xs text-slate-500 italic" title={statusReason}>
+                              {statusReason}
+                            </span>
+                          )}
+                        </div>
+                        {engagement.rewardAmount && isRewarded && (
+                          <p className="text-xs text-green-600 mt-1 font-medium">
+                            +{engagement.rewardAmount.toFixed(4)} {engagement.post?.reward_coin_symbol || 'FCN'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {isMyEngagementsLoading && myEngagements.length === 0 ? (
+                <Card className="p-6">
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-20 w-full" />
+                    ))}
+                  </div>
+                </Card>
+              ) : myEngagements.length === 0 ? (
+                <Card className="p-12 text-center">
+                  <p className="text-slate-500">
+                    You haven't engaged with any posts yet. Start engaging to earn rewards!
+                  </p>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {myEngagements.map((engagement: any) => {
+                    const engagementAction = engagement.type === 'LIKE' ? 'liked' 
+                      : engagement.type === 'COMMENT' ? 'commented on'
+                      : engagement.type === 'SHARE' ? 'shared'
+                      : engagement.type === 'WATCH' ? 'watched'
+                      : 'engaged with';
+                    
+                    const status = engagement.status || (engagement.reward_given ? 'rewarded' : 'pending');
+                    const statusReason = engagement.status_reason || '';
+                    const isRewarded = status === 'rewarded';
+                    const isNotEligible = status === 'not_eligible';
+                    const creatorName = engagement.creator?.display_name || engagement.creator?.username || 'Creator';
+                    
+                    return (
+                      <Card key={engagement.id} className="p-4">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                            <span className="text-purple-600 font-semibold text-sm">⚡</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-slate-900 font-medium">{creatorName}</p>
+                            <p className="text-slate-600 text-sm mt-1">
+                              You {engagementAction} {creatorName}'s {engagement.post?.page_name ? `${engagement.post.page_name} (${engagement.platform})` : engagement.platform} post
+                              {engagement.post?.title && ` "${engagement.post.title}"`}
+                            </p>
+                            <div className="flex items-center gap-3 mt-2 flex-wrap">
+                              <Badge variant="outline" className="text-xs">
+                                {engagement.post?.page_name ? `${engagement.post.page_name} • ${engagement.platform}` : engagement.platform}
+                              </Badge>
+                              <span className="text-xs text-slate-400">
+                                {engagement.logged_at 
+                                  ? new Date(engagement.logged_at).toLocaleString()
+                                  : 'Just now'}
+                              </span>
+                              <Badge 
+                                variant={isRewarded ? 'default' : isNotEligible ? 'destructive' : 'secondary'}
+                                className="text-xs"
+                                title={statusReason}
+                              >
+                                {isRewarded ? 'Rewarded' : isNotEligible ? 'Not Eligible' : 'Pending'}
+                              </Badge>
+                              {statusReason && !isRewarded && (
+                                <span className="text-xs text-slate-500 italic" title={statusReason}>
+                                  {statusReason}
+                                </span>
+                              )}
+                            </div>
+                            {engagement.reward_amount && isRewarded && (
+                              <p className="text-xs text-green-600 mt-1 font-medium">
+                                +{engagement.reward_amount.toFixed(4)} {engagement.post?.reward_coin_symbol || 'FCN'}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </TabsContent>
 
         <TabsContent value="facebook" className="space-y-6 focus-visible:outline-none">
           <div className="flex items-center justify-between">
