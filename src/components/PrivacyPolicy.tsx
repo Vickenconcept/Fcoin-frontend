@@ -198,7 +198,7 @@ export default function PrivacyPolicy() {
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
                 <li><strong>Meta (Facebook/Instagram):</strong> For social media integration and engagement tracking. Their privacy policy applies to data collected through their platforms.</li>
-                <li><strong>Google (YouTube):</strong> For YouTube channel integration and engagement tracking. Google's privacy policy applies to data collected through YouTube's API.</li>
+                <li><strong>Google (YouTube):</strong> For YouTube channel integration and engagement tracking. Google's privacy policy (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">https://policies.google.com/privacy</a>) applies to data collected through YouTube's API.</li>
                 <li><strong>TikTok:</strong> For TikTok account integration and engagement tracking. TikTok's privacy policy applies to data collected through their API.</li>
                 <li><strong>Payment Processors:</strong> For processing payments. Payment information is handled by these third parties and subject to their privacy policies.</li>
               </ul>
@@ -236,7 +236,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">11. Children's Privacy</h2>
               <p className="text-slate-700 leading-relaxed">
-                Phanrise is not intended for users under the age of 13. We do not knowingly collect personal information from children under 13. 
+                Phanrise is not intended for users under the age of 13. <strong>We do not collect data from users under 13.</strong> We do not knowingly collect personal information from children under 13. 
                 If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately.
               </p>
             </section>
