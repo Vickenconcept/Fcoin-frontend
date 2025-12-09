@@ -167,8 +167,8 @@ export function MessagingSection() {
   return (
     <div className="flex h-full gap-4">
       {/* Conversations List */}
-      <Card className="w-80 flex flex-col p-0">
-        <div className="p-4 border-b">
+      <Card className="w-80 flex flex-col p-0 bg-white">
+        <div className="p-4 border-b bg-white">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Messages</h2>
             <Button
@@ -211,7 +211,7 @@ export function MessagingSection() {
                 <button
                   key={conversation.id}
                   onClick={() => setSelectedConversation(conversation)}
-                  className={`w-full p-4 text-left hover:bg-muted/50 transition-colors ${
+                  className={`w-full p-4 text-left hover:bg-muted/50 transition-colors bg-white ${
                     selectedConversation?.id === conversation.id ? 'bg-muted' : ''
                   }`}
                 >
@@ -253,11 +253,11 @@ export function MessagingSection() {
       </Card>
 
       {/* Chat Area */}
-      <Card className="flex-1 flex flex-col p-0">
+      <Card className="flex-1 flex flex-col p-0 bg-white">
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b flex items-center gap-3">
+            <div className="p-4 border-b flex items-center gap-3 bg-white">
               <Avatar>
                 <AvatarImage
                   src={selectedConversation.other_user.avatar_url || undefined}
@@ -281,7 +281,7 @@ export function MessagingSection() {
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 p-4 bg-white">
               {messagesLoading && messages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -336,7 +336,7 @@ export function MessagingSection() {
             </ScrollArea>
 
             {/* Message Input */}
-            <div className="p-4 border-t">
+            <div className="p-4 border-t bg-white">
               <div className="flex gap-2">
                 <Input
                   ref={inputRef}
@@ -353,7 +353,7 @@ export function MessagingSection() {
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center p-8">
+          <div className="flex flex-col items-center justify-center h-full text-center p-8 bg-white">
             <MessageCircle className="h-16 w-16 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Select a conversation</h3>
             <p className="text-sm text-muted-foreground">
