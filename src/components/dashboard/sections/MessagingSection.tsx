@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,8 @@ import toast from 'react-hot-toast';
 
 export function MessagingSection() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const conversationIdFromUrl = searchParams.get('conversation');
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,6 +37,21 @@ export function MessagingSection() {
     selectedConversation?.id || null,
     selectedConversation?.other_user.id,
   );
+
+  // Handle conversation ID from URL (when coming from profile page)
+  useEffect(() => {
+    if (conversationIdFromUrl && !conversationsLoading) {
+      const conversation = conversations.find((c) => c.id === conversationIdFromUrl);
+      if (conversation) {
+        setSelectedConversation(conversation);
+        // Remove the query parameter after selecting
+        setSearchParams({});
+      } else if (conversations.length > 0) {
+        // Conversation not found in list, might be new - reload to get it
+        reloadConversations();
+      }
+    }
+  }, [conversationIdFromUrl, conversations, conversationsLoading, setSearchParams, reloadConversations]);
 
   // Filter conversations by search
   const filteredConversations = conversations.filter((conv) => {

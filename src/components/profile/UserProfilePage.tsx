@@ -27,6 +27,7 @@ import {
   QrCode,
   UserPlus,
   UserMinus,
+  MessageSquare,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -747,6 +748,41 @@ export default function UserProfilePage() {
     [profileLink],
   );
 
+  const handleStartMessage = useCallback(async () => {
+    if (!profile || profile.is_current_user) return;
+
+    try {
+      // First, find or create the conversation
+      const response = await apiClient.request<{
+        data: {
+          id: string;
+          other_user: {
+            id: string;
+            username: string;
+            display_name: string;
+            avatar_url: string | null;
+          };
+          created_at: string;
+        };
+      }>('/v1/conversations/find-or-create', {
+        method: 'POST',
+        body: { user_id: profile.id },
+      });
+
+      if (response.ok && response.data) {
+        // Navigate to messaging dashboard with the conversation ID
+        navigate(`/dashboard/messaging?conversation=${response.data.id}`);
+        toast.success('Conversation started');
+      } else {
+        const errorMsg = response.errors?.[0]?.detail ?? 'Failed to start conversation';
+        toast.error(errorMsg);
+      }
+    } catch (err) {
+      console.error('[Profile] start message error', err);
+      toast.error('Failed to start conversation');
+    }
+  }, [profile, navigate]);
+
   if (RESERVED_USERNAMES.has(cleanedUsername)) {
     return <Navigate to="/dashboard/feed" replace />;
   }
@@ -829,17 +865,27 @@ export default function UserProfilePage() {
                     Share profile
                   </Button>
                   {!profile.is_current_user && (
-                    <Button
-                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 min-w-[160px]"
-                      onClick={handleFollowToggle}
-                      disabled={isFollowLoading}
-                    >
-                      {isFollowLoading
-                        ? 'Please wait...'
-                        : profile.is_following
-                        ? 'Following'
-                        : 'Follow & earn'}
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={handleStartMessage}
+                        className="flex items-center gap-2 text-slate-600"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        Message
+                      </Button>
+                      <Button
+                        className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 min-w-[160px]"
+                        onClick={handleFollowToggle}
+                        disabled={isFollowLoading}
+                      >
+                        {isFollowLoading
+                          ? 'Please wait...'
+                          : profile.is_following
+                          ? 'Following'
+                          : 'Follow & earn'}
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
