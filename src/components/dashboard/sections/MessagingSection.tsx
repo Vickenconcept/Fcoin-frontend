@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ import toast from 'react-hot-toast';
 
 export function MessagingSection() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const conversationIdFromUrl = searchParams.get('conversation');
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -29,8 +30,8 @@ export function MessagingSection() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isStartingNewChat, setIsStartingNewChat] = useState(false);
   const [newChatUserId, setNewChatUserId] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const { conversations, isLoading: conversationsLoading, reload: reloadConversations } = useConversations();
   const { messages, isLoading: messagesLoading, sendMessage, markAsRead } = useMessages(
@@ -91,7 +92,7 @@ export function MessagingSection() {
   }, [messageInput, selectedConversation, sendMessage, reloadConversations]);
 
   const handleKeyPress = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: { key: string; shiftKey?: boolean; preventDefault: () => void }) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleSendMessage();
@@ -116,16 +117,20 @@ export function MessagingSection() {
         };
       }>('/v1/conversations/find-or-create', {
         method: 'POST',
-        body: { user_id: userId },
+        body: { user_id: userId } as any,
       });
 
       if (response.ok && response.data) {
+        const conversationData = (response.data as any)?.data || response.data;
+        const conversationId = conversationData?.id;
         // Reload conversations to get the new one
         await reloadConversations();
         // Find and select the new conversation
-        const newConv = conversations.find((c) => c.id === response.data.id);
-        if (newConv) {
-          setSelectedConversation(newConv);
+        if (conversationId) {
+          const newConv = conversations.find((c) => c.id === conversationId);
+          if (newConv) {
+            setSelectedConversation(newConv);
+          }
         }
         setIsStartingNewChat(false);
         setNewChatUserId(null);
@@ -167,8 +172,8 @@ export function MessagingSection() {
   return (
     <div className="flex h-full gap-4">
       {/* Conversations List */}
-      <Card className="w-80 flex flex-col p-0 bg-white">
-        <div className="p-4 border-b bg-white">
+      <Card className="w-80 flex flex-col p-0 bg-white shadow-md border border-slate-200">
+        <div className="p-4 border-b border-slate-200 bg-white">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Messages</h2>
             <Button
@@ -187,7 +192,7 @@ export function MessagingSection() {
             <Input
               placeholder="Search conversations..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e: { target: { value: string } }) => setSearchQuery(e.target.value)}
               className="pl-9"
             />
           </div>
@@ -211,8 +216,8 @@ export function MessagingSection() {
                 <button
                   key={conversation.id}
                   onClick={() => setSelectedConversation(conversation)}
-                  className={`w-full p-4 text-left hover:bg-muted/50 transition-colors bg-white ${
-                    selectedConversation?.id === conversation.id ? 'bg-muted' : ''
+                  className={`w-full p-4 text-left transition-colors bg-white hover:bg-purple-50/50 ${
+                    selectedConversation?.id === conversation.id ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-l-4 border-purple-500' : ''
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -238,7 +243,7 @@ export function MessagingSection() {
                           {conversation.latest_message?.body || 'No messages yet'}
                         </p>
                         {conversation.unread_count > 0 && (
-                          <Badge variant="default" className="ml-2">
+                          <Badge variant="default" className="ml-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0 shadow-sm">
                             {conversation.unread_count}
                           </Badge>
                         )}
@@ -253,12 +258,15 @@ export function MessagingSection() {
       </Card>
 
       {/* Chat Area */}
-      <Card className="flex-1 flex flex-col p-0 bg-white">
+      <Card className="flex-1 flex flex-col p-0 bg-white shadow-md border border-slate-200">
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b flex items-center gap-3 bg-white">
-              <Avatar>
+            <button
+              onClick={() => navigate(`/${selectedConversation.other_user.username}`)}
+              className="w-full p-4 border-b border-slate-200 flex items-center gap-3 bg-white hover:bg-slate-50 transition-colors text-left"
+            >
+              <Avatar className="cursor-pointer">
                 <AvatarImage
                   src={selectedConversation.other_user.avatar_url || undefined}
                 />
@@ -270,7 +278,7 @@ export function MessagingSection() {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <p className="font-medium">
+                <p className="font-medium text-slate-900">
                   {selectedConversation.other_user.display_name ||
                     selectedConversation.other_user.username}
                 </p>
@@ -278,7 +286,7 @@ export function MessagingSection() {
                   @{selectedConversation.other_user.username}
                 </p>
               </div>
-            </div>
+            </button>
 
             {/* Messages */}
             <ScrollArea className="flex-1 p-4 bg-white">
@@ -310,20 +318,22 @@ export function MessagingSection() {
                         )}
                         <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[70%]`}>
                           {!isOwn && (
-                            <p className="text-xs text-muted-foreground mb-1">
+                            <p className="text-xs text-muted-foreground mb-1 px-1">
                               {message.sender.display_name || message.sender.username}
                             </p>
                           )}
                           <div
-                            className={`rounded-lg px-4 py-2 ${
+                            className={`rounded-xl px-4 py-2.5 shadow-sm border ${
                               isOwn
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-foreground'
+                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-purple-500/20'
+                                : 'bg-white text-slate-900 border-slate-200'
                             }`}
                           >
-                            <p className="text-sm whitespace-pre-wrap break-words">{message.body}</p>
+                            <p className={`text-sm whitespace-pre-wrap break-words ${isOwn ? 'text-white' : 'text-slate-900'}`}>
+                              {message.body}
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-1.5 px-1">
                             {formatTime(message.created_at)}
                           </p>
                         </div>
@@ -336,17 +346,21 @@ export function MessagingSection() {
             </ScrollArea>
 
             {/* Message Input */}
-            <div className="p-4 border-t bg-white">
+            <div className="p-4 border-t border-slate-200 bg-white">
               <div className="flex gap-2">
                 <Input
                   ref={inputRef}
                   placeholder="Type a message..."
                   value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
+                  onChange={(e: { target: { value: string } }) => setMessageInput(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="flex-1"
+                  className="flex-1 border-slate-200 focus:border-purple-500 focus:ring-purple-500"
                 />
-                <Button onClick={handleSendMessage} disabled={!messageInput.trim()}>
+                <Button 
+                  onClick={handleSendMessage} 
+                  disabled={!messageInput.trim()}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-sm"
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
