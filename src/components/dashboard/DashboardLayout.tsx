@@ -30,6 +30,8 @@ import { ProfileSection } from './sections/ProfileSection';
 import { SocialInsightsSection } from './sections/SocialInsightsSection';
 import { FeedSection } from './sections/FeedSection';
 import { RewardAnomaliesSection } from './sections/RewardAnomaliesSection';
+import { MessagingSection } from './sections/MessagingSection';
+import { SettingsSection } from './sections/SettingsSection';
 import { LaunchCoinModal } from './LaunchCoinModal';
 import { useRewardRules } from './hooks/useRewardRules';
 import { useCoins } from './hooks/useCoins';
@@ -48,7 +50,9 @@ type TabType =
   | 'wallet'
   | 'profile'
   | 'social-insights'
-  | 'reward-anomalies';
+  | 'reward-anomalies'
+  | 'messaging'
+  | 'settings';
 
 const allowedTabs: TabType[] = [
   'feed',
@@ -59,6 +63,8 @@ const allowedTabs: TabType[] = [
   'profile',
   'social-insights',
   'reward-anomalies',
+  'messaging',
+  'settings',
 ];
 
 export default function DashboardLayout() {
@@ -313,6 +319,18 @@ export default function DashboardLayout() {
           </button>
 
           <button
+            onClick={() => goToTab('messaging')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              activeTab === 'messaging'
+                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                : 'text-slate-600 hover:bg-purple-50'
+            }`}
+          >
+            <MessageSquare className="w-5 h-5" />
+            <span>Messages</span>
+          </button>
+
+          <button
             onClick={() => goToTab('profile')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
               activeTab === 'profile'
@@ -321,7 +339,19 @@ export default function DashboardLayout() {
             }`}
           >
             <Settings className="w-5 h-5" />
-            <span>Profile & Settings</span>
+            <span>Profile</span>
+          </button>
+
+          <button
+            onClick={() => goToTab('settings')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+              activeTab === 'settings'
+                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                : 'text-slate-600 hover:bg-purple-50'
+            }`}
+          >
+            <ShieldCheck className="w-5 h-5" />
+            <span>Settings</span>
           </button>
 
           {isSuperAdmin && (
@@ -376,7 +406,9 @@ export default function DashboardLayout() {
                 { tab: 'my-coin' as TabType, icon: Coins, label: 'My Coin' },
                 { tab: 'wallet' as TabType, icon: WalletIcon, label: 'Wallet' },
                 { tab: 'social-insights' as TabType, icon: BarChart3, label: 'Social Insights' },
-                { tab: 'profile' as TabType, icon: Settings, label: 'Profile & Settings' },
+                { tab: 'messaging' as TabType, icon: MessageSquare, label: 'Messages' },
+                { tab: 'profile' as TabType, icon: Settings, label: 'Profile' },
+                { tab: 'settings' as TabType, icon: ShieldCheck, label: 'Settings' },
               ].map(({ tab, icon: Icon, label }) => (
                 <button
                   key={tab}
@@ -549,6 +581,10 @@ export default function DashboardLayout() {
               </div>
             )
           )}
+
+          {activeTab === 'messaging' && <MessagingSection />}
+
+          {activeTab === 'settings' && <SettingsSection />}
         </main>
       </div>
 
