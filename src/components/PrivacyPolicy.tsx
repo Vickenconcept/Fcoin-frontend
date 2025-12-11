@@ -52,47 +52,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold text-purple-900 mb-4">2. Information We Collect</h2>
               
-              <h3 className="text-xl font-semibold text-slate-900 mb-3">2.1 Social Media Platform Data</h3>
-              <p className="text-slate-700 leading-relaxed mb-4">
-                When you connect your social media accounts (Facebook, Instagram, TikTok, or YouTube) to Phanrise, we collect information through their respective APIs:
-              </p>
-              
-              <h4 className="text-lg font-semibold text-slate-800 mb-2 mt-4">Facebook and Instagram (Meta Platforms)</h4>
-              <p className="text-slate-700 leading-relaxed mb-3">
-                When you connect your Facebook or Instagram accounts, we collect the following information through Meta's APIs:
-              </p>
-              <ul className="list-disc pl-6 space-y-2 text-slate-700 mb-4">
-                <li><strong>Basic Profile Information:</strong> Your Instagram username, profile picture, and basic account details (via instagram_basic permission)</li>
-                <li><strong>Page Information:</strong> Pages you manage, page names, and page IDs (via pages_show_list permission)</li>
-                <li><strong>Engagement Data:</strong> Likes, comments, shares, and views on your posts (via pages_read_engagement permission)</li>
-                <li><strong>Content Data:</strong> Posts, comments, and public content from pages you manage (via pages_read_user_content permission)</li>
-                <li><strong>Insights Data:</strong> Analytics and engagement metrics for your Instagram account and pages (via instagram_manage_insights permission)</li>
-              </ul>
-
-              <h4 className="text-lg font-semibold text-slate-800 mb-2 mt-4">YouTube (Google)</h4>
-              <p className="text-slate-700 leading-relaxed mb-3">
-                When you connect your YouTube account, we collect the following information through Google's YouTube Data API:
-              </p>
-              <ul className="list-disc pl-6 space-y-2 text-slate-700 mb-4">
-                <li><strong>Channel Information:</strong> Your YouTube channel name, channel ID, profile picture, and subscriber count</li>
-                <li><strong>Video Data:</strong> Public video information including titles, descriptions, view counts, and publication dates</li>
-                <li><strong>Engagement Data:</strong> Likes, comments, and view counts on your videos</li>
-                <li><strong>Analytics Data:</strong> Video performance metrics and engagement statistics</li>
-                <li><strong>Playlist Information:</strong> Public playlists and their contents</li>
-              </ul>
-
-              <h4 className="text-lg font-semibold text-slate-800 mb-2 mt-4">TikTok</h4>
-              <p className="text-slate-700 leading-relaxed mb-3">
-                When you connect your TikTok account, we collect the following information through TikTok's API:
-              </p>
-              <ul className="list-disc pl-6 space-y-2 text-slate-700">
-                <li><strong>Profile Information:</strong> Your TikTok username, display name, profile picture, and follower count</li>
-                <li><strong>Video Data:</strong> Public video information including captions, view counts, like counts, and comment counts</li>
-                <li><strong>Engagement Data:</strong> Likes, comments, shares, and views on your TikTok videos</li>
-                <li><strong>Analytics Data:</strong> Video performance metrics and engagement statistics</li>
-              </ul>
-
-              <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">2.2 Account Information</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-3">2.1 Account Information</h3>
               <p className="text-slate-700 leading-relaxed mb-4">
                 We collect information you provide when creating your Phanrise account:
               </p>
@@ -140,7 +100,6 @@ export default function PrivacyPolicy() {
                 <li>Data is stored on secure servers with encryption in transit and at rest</li>
                 <li>Access to your data is restricted to authorized personnel only</li>
                 <li>We use secure authentication methods and regularly update our security practices</li>
-                <li>Social media platform data (Facebook, Instagram, TikTok, YouTube) is stored only as necessary to provide our services</li>
                 <li>We retain your data only for as long as necessary to fulfill the purposes outlined in this policy</li>
               </ul>
             </section>
@@ -169,7 +128,6 @@ export default function PrivacyPolicy() {
                 <li><strong>Deletion:</strong> Request deletion of your personal information (see section 7 below)</li>
                 <li><strong>Data Portability:</strong> Request a copy of your data in a portable format</li>
                 <li><strong>Opt-Out:</strong> Unsubscribe from marketing communications at any time</li>
-                <li><strong>Disconnect Accounts:</strong> Disconnect your Facebook, Instagram, TikTok, or YouTube accounts at any time through your account settings</li>
               </ul>
               <p className="text-slate-700 leading-relaxed mt-4">
                 To exercise these rights, please contact us at the email address provided in section 9.
@@ -184,7 +142,6 @@ export default function PrivacyPolicy() {
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
                 <li><strong>Through the App:</strong> Go to your account settings and select "Delete Account" to permanently delete your account and associated data</li>
                 <li><strong>By Email:</strong> Send a deletion request to <a href="mailto:privacy@phanrise.app" className="text-purple-600 hover:underline">privacy@phanrise.app</a> with the subject line "Data Deletion Request"</li>
-                <li><strong>Disconnect Social Accounts:</strong> You can disconnect your Facebook, Instagram, TikTok, or YouTube accounts at any time, which will stop new data collection from those platforms</li>
               </ul>
               <p className="text-slate-700 leading-relaxed mt-4">
                 Upon receiving a valid deletion request, we will delete your personal information within 30 days, except where we are required to retain it for legal or legitimate business purposes.
@@ -197,9 +154,6 @@ export default function PrivacyPolicy() {
                 Phanrise integrates with the following third-party services:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
-                <li><strong>Meta (Facebook/Instagram):</strong> For social media integration and engagement tracking. Their privacy policy applies to data collected through their platforms.</li>
-                <li><strong>Google (YouTube):</strong> For YouTube channel integration and engagement tracking. Google's privacy policy (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">https://policies.google.com/privacy</a>) applies to data collected through YouTube's API.</li>
-                <li><strong>TikTok:</strong> For TikTok account integration and engagement tracking. TikTok's privacy policy applies to data collected through their API.</li>
                 <li><strong>Payment Processors:</strong> For processing payments. Payment information is handled by these third parties and subject to their privacy policies.</li>
               </ul>
               <p className="text-slate-700 leading-relaxed mt-4">

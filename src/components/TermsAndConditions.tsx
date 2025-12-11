@@ -53,7 +53,6 @@ export default function TermsAndConditions() {
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700">
                 <li>Creation and management of branded coins</li>
-                <li>Integration with social media platforms (Facebook, Instagram, YouTube, TikTok)</li>
                 <li>Tracking of engagement metrics (likes, comments, shares, views)</li>
                 <li>Distribution of coins to registered supporters based on engagement</li>
                 <li>Wallet and transaction management</li>

@@ -728,7 +728,7 @@ export default function UserProfilePage() {
   }, [profileLink, profile?.display_name, profile?.username, handleCopyProfileLink]);
 
   const handleSocialShare = useCallback(
-    (platform: 'twitter' | 'facebook' | 'whatsapp') => {
+    (platform: 'twitter' | 'whatsapp') => {
       if (!profileLink) return;
       const encoded = encodeURIComponent(profileLink);
       let shareUrl = profileLink;
@@ -736,8 +736,6 @@ export default function UserProfilePage() {
         shareUrl = `https://twitter.com/intent/tweet?url=${encoded}&text=${encodeURIComponent(
           'Follow me on Phanrise',
         )}`;
-      } else if (platform === 'facebook') {
-        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encoded}`;
       } else if (platform === 'whatsapp') {
         shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(
           `Follow me on Phanrise: ${profileLink}`,
@@ -943,13 +941,6 @@ export default function UserProfilePage() {
                     className="flex items-center gap-2"
                   >
                     <span className="font-semibold">X</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleSocialShare('facebook')}
-                    className="flex items-center gap-2"
-                  >
-                    <span className="font-semibold">Facebook</span>
                   </Button>
                   <Button
                     variant="outline"

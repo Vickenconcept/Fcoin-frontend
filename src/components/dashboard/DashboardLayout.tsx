@@ -3,7 +3,6 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   AlertTriangle,
-  BarChart3,
   Coins,
   Home,
   LogOut,
@@ -27,7 +26,6 @@ import { DiscoverSection } from './sections/DiscoverSection';
 import { MyCoinSection } from './sections/MyCoinSection';
 import { WalletSection } from './sections/WalletSection';
 import { ProfileSection } from './sections/ProfileSection';
-import { SocialInsightsSection } from './sections/SocialInsightsSection';
 import { FeedSection } from './sections/FeedSection';
 import { RewardAnomaliesSection } from './sections/RewardAnomaliesSection';
 import { MessagingSection } from './sections/MessagingSection';
@@ -49,7 +47,6 @@ type TabType =
   | 'my-coin'
   | 'wallet'
   | 'profile'
-  | 'social-insights'
   | 'reward-anomalies'
   | 'messaging'
   | 'settings';
@@ -61,7 +58,6 @@ const allowedTabs: TabType[] = [
   'my-coin',
   'wallet',
   'profile',
-  'social-insights',
   'reward-anomalies',
   'messaging',
   'settings',
@@ -84,7 +80,7 @@ export default function DashboardLayout() {
   // Only load data for tabs that need it
   const needsStats = activeTab === 'home' || activeTab === 'my-coin' || activeTab === 'wallet';
   const needsRewardRules = activeTab === 'my-coin';
-  const needsCoins = activeTab === 'my-coin' || activeTab === 'social-insights';
+  const needsCoins = activeTab === 'my-coin';
   const needsEngagements = activeTab === 'home';
 
   const {
@@ -307,18 +303,6 @@ export default function DashboardLayout() {
           </button>
 
           <button
-            onClick={() => goToTab('social-insights')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              activeTab === 'social-insights'
-                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                : 'text-slate-600 hover:bg-purple-50'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5" />
-            <span>Social Insights</span>
-          </button>
-
-          <button
             onClick={() => goToTab('messaging')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
               activeTab === 'messaging'
@@ -405,7 +389,6 @@ export default function DashboardLayout() {
                 { tab: 'discover' as TabType, icon: Search, label: 'Discover' },
                 { tab: 'my-coin' as TabType, icon: Coins, label: 'My Coin' },
                 { tab: 'wallet' as TabType, icon: WalletIcon, label: 'Wallet' },
-                { tab: 'social-insights' as TabType, icon: BarChart3, label: 'Social Insights' },
                 { tab: 'messaging' as TabType, icon: MessageSquare, label: 'Messages' },
                 { tab: 'profile' as TabType, icon: Settings, label: 'Profile' },
                 { tab: 'settings' as TabType, icon: ShieldCheck, label: 'Settings' },
@@ -562,9 +545,6 @@ export default function DashboardLayout() {
 
           {activeTab === 'profile' && <ProfileSection />}
 
-          {activeTab === 'social-insights' && (
-            <SocialInsightsSection coins={coins} isCoinsLoading={isCoinsLoading} />
-          )}
 
           {activeTab === 'reward-anomalies' && (
             isSuperAdmin ? (
@@ -609,7 +589,7 @@ export default function DashboardLayout() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-slate-600">
-              Allocate {walletCurrency} to Alex Rivera for their engagement on your Instagram post.
+              Allocate {walletCurrency} to Alex Rivera for their engagement on your post.
             </p>
             <div>
               <p className="text-slate-600 mb-2">Amount</p>

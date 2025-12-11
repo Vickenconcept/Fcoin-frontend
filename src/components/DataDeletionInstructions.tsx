@@ -115,7 +115,6 @@ export default function DataDeletionInstructions() {
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-700 mb-4">
                 <li><strong>Account Information:</strong> Email address, username, display name, profile picture, bio, and other profile data</li>
-                <li><strong>Social Media Connections:</strong> All connected Facebook, Instagram, TikTok, and YouTube accounts and their associated data</li>
                 <li><strong>Content:</strong> All posts, comments, likes, shares, and other content you've created</li>
                 <li><strong>Coins and Rewards:</strong> Your coin balance, reward history, and transaction records</li>
                 <li><strong>Engagement Data:</strong> All tracked engagement metrics and analytics</li>
@@ -125,56 +124,6 @@ export default function DataDeletionInstructions() {
                 <p className="text-amber-900 text-sm">
                   <strong>Important:</strong> Some data may be retained for legal or legitimate business purposes (e.g., transaction records required for tax compliance) for a limited period as required by law. However, this data will not be used for any other purpose and will be deleted when legally permissible.
                 </p>
-              </div>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold text-purple-900 mb-4">Disconnect Social Media Accounts</h2>
-              <p className="text-slate-700 leading-relaxed mb-4">
-                If you only want to remove data from a specific social media platform without deleting your entire Phanrise account, you can disconnect individual accounts:
-              </p>
-              <ol className="list-decimal pl-6 space-y-2 text-slate-700 mb-4">
-                <li>Go to your Profile Settings</li>
-                <li>Navigate to "Connected Social Accounts"</li>
-                <li>Click "Disconnect" next to the account you want to remove</li>
-                <li>Confirm the disconnection</li>
-              </ol>
-              <p className="text-slate-700 leading-relaxed mb-4">
-                <strong>When you disconnect a social media account:</strong>
-              </p>
-              <ul className="list-disc pl-6 space-y-2 text-slate-700 mb-4">
-                <li>All data associated with that social media account will be deleted from Phanrise</li>
-                <li>This includes posts, engagement metrics, and any other data synced from that platform</li>
-                <li>New data collection from that platform will stop</li>
-                <li>Your Phanrise account and data from other connected platforms will remain active</li>
-              </ul>
-              <p className="text-slate-700 leading-relaxed">
-                This allows you to remove data from a specific platform while keeping your Phanrise account and data from other platforms intact.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold text-purple-900 mb-4">Facebook Data Deletion</h2>
-              <p className="text-slate-700 leading-relaxed mb-4">
-                If you have connected your Facebook account to Phanrise and want to delete data associated with your Facebook account:
-              </p>
-              <div className="bg-blue-50 rounded-lg p-6 border border-blue-100 mb-4">
-                <h3 className="text-lg font-semibold text-blue-900 mb-3">Option 1: Through Phanrise</h3>
-                <p className="text-slate-700 leading-relaxed mb-3">
-                  Follow the steps in "Method 1" or "Method 2" above to delete your entire Phanrise account, which will include all Facebook data.
-                </p>
-                
-                <h3 className="text-lg font-semibold text-blue-900 mb-3 mt-4">Option 2: Through Facebook</h3>
-                <p className="text-slate-700 leading-relaxed mb-3">
-                  You can also request data deletion directly through Facebook:
-                </p>
-                <ol className="list-decimal pl-6 space-y-2 text-slate-700">
-                  <li>Go to your Facebook Settings</li>
-                  <li>Navigate to "Apps and Websites"</li>
-                  <li>Find "Phanrise" in your connected apps</li>
-                  <li>Click "Remove" to disconnect the app</li>
-                  <li>To delete data, you can also visit: <a href="https://www.facebook.com/help/contact/571927962448522" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Facebook Data Deletion Request</a></li>
-                </ol>
               </div>
             </section>
 

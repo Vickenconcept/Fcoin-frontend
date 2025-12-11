@@ -34,7 +34,7 @@ type HomeSectionProps = {
   isRecentEngagementsLoading: boolean;
   earnedCoinEntries: EarnedCoinEntry[];
   isEarnedCoinsLoading: boolean;
-  onNavigate: (tab: 'discover' | 'my-coin' | 'wallet' | 'profile' | 'social-insights') => void;
+  onNavigate: (tab: 'discover' | 'my-coin' | 'wallet' | 'profile') => void;
   onOpenAllocateModal: () => void;
   onRefreshEngagements?: () => void;
   onRefreshEarnings?: () => void;
@@ -248,14 +248,6 @@ export function HomeSection({
               })}
             </div>
           )}
-          <Button
-            variant="outline"
-            className="w-full mt-4"
-            onClick={() => onNavigate('social-insights')}
-          >
-            View All Engagement
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
         </Card>
 
         {/* My Earnings */}
